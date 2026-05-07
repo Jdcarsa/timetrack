@@ -218,9 +218,11 @@ export function useCronograma(projectId) {
         }
     }
 
-    function openCreateTask(schedule) {
+    function openCreateTask(schedule, selectedDate = '') {
         activeSchedule.value = schedule
         taskForm.value = emptyTaskForm()
+        const weekStart = schedule?.week_start ? toYMD(getMonday(schedule.week_start)) : ''
+        taskForm.value.date = selectedDate || weekStart
         taskFormErrors.value = {}
         taskFormError.value = ''
         showCreateTask.value = true

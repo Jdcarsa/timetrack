@@ -94,7 +94,13 @@ body {
 }
 
 /* ---- Table ---- */
-.table-wrap { overflow-x: auto; border-radius: 8px; }
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.table-wrap::-webkit-scrollbar { display: none; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th {
   text-align: left;

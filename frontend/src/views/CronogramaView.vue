@@ -151,7 +151,7 @@
                                     <p v-if="task.user" class="task-chip-user">{{ task.user.name }}</p>
                                 </div>
 
-                                <button class="add-task-btn-small" @click="openCreateTask(schedule)">
+                                <button class="add-task-btn-small" @click="openCreateTask(schedule, day.date)">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                                         width="11" height="11">
                                         <path fill-rule="evenodd"
@@ -248,7 +248,7 @@
                     <span v-if="taskFormErrors.date" class="field-error">{{ taskFormErrors.date }}</span>
                 </div>
 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                <div class="form-grid-2">
                     <div class="form-group">
                         <label class="form-label">Hora inicio *</label>
                         <input v-model="taskForm.start_time" type="time" class="form-input" />

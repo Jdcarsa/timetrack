@@ -178,7 +178,7 @@
                     <span v-if="errors.date" class="field-error">{{ errors.date }}</span>
                 </div>
 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                <div class="form-grid-2">
                     <div class="form-group">
                         <label class="form-label">Hora inicio *</label>
                         <input v-model="form.start_time" type="time" class="form-input" />

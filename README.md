@@ -1,165 +1,121 @@
-# ⏱ TimeTrack MVP — Laravel 11 + Vue 3
+﻿# TimeTrack MVP - Laravel 11 + Vue 3
 
-Sistema de control de horas de trabajo con roles (admin/empleado),
-exportación a Excel y gestión de tarifas por hora.
+TimeTrack is a work hour tracking system with role based access (admin and empleado), weekly planning, project schedules, and Excel export.
 
----
+## Project structure
 
-## 📁 Estructura del proyecto
-
-```
+```text
 timetrack/
-├── backend/    → API REST en Laravel 11
-└── frontend/   → SPA en Vue 3 + Vite
+|-- backend/   # Laravel 11 REST API
+`-- frontend/  # Vue 3 + Vite SPA
 ```
 
----
+## Main features
 
-## 🚀 Instalación paso a paso
+- Login and logout with token auth
+- Employee dashboard with clock in and clock out
+- Personal history of worked hours
+- Weekly planning with task status
+- Projects and schedules by week
+- Create and assign tasks inside schedules
+- Admin modules:
+  - Employees
+  - Global records
+  - Calendar
+  - Excel export
 
-### 1. Requisitos previos
+## Requirements
 
-- PHP >= 8.2
+- PHP 8.2 or higher
 - Composer
-- Node.js >= 18
-- MySQL o MariaDB
+- Node.js 18 or higher
+- MySQL or MariaDB
 
----
+## Setup
 
-### 2. Backend (Laravel)
+### 1) Backend
 
 ```bash
-# 1. Entra a la carpeta
 cd backend
-
-# 2. Instala dependencias PHP
 composer install
 
-# 3. Copia el archivo de entorno
+# Linux/Mac
 cp .env.example .env
 
-# 4. Genera la clave de la app
+# Windows PowerShell
+copy .env.example .env
+
 php artisan key:generate
-
-# 5. Edita .env con tus datos de base de datos:
-#    DB_DATABASE=timetrack
-#    DB_USERNAME=tu_usuario
-#    DB_PASSWORD=tu_password
-
-# 6. Crea la base de datos en MySQL
-#    CREATE DATABASE timetrack;
-
-# 7. Ejecuta las migraciones y seeders
-php artisan migrate --seed
-
-# 8. Inicia el servidor
-php artisan serve
-# → corre en http://localhost:8000
 ```
 
----
+Edit `.env` with your database config:
 
-### 3. Frontend (Vue 3)
+```env
+DB_DATABASE=timetrack
+DB_USERNAME=tu_usuario
+DB_PASSWORD=tu_password
+```
+
+Create database and run migrations + seed:
 
 ```bash
-# 1. En otra terminal, entra a la carpeta
+php artisan migrate --seed
+php artisan serve
+```
+
+Backend default URL:
+
+- http://localhost:8000
+
+### 2) Frontend
+
+```bash
 cd frontend
-
-# 2. Instala dependencias JS
 npm install
-
-# 3. Inicia el servidor de desarrollo
 npm run dev
-# → corre en http://localhost:5173
 ```
 
-Abre **http://localhost:5173** en tu navegador.
+Frontend default URL:
 
----
+- http://localhost:5173
 
-## 👤 Usuarios de prueba (creados por el seeder)
+## Test users (seed)
 
-| Rol      | Email                  | Contraseña | Tarifa/h   |
-|----------|------------------------|------------|------------|
-| Admin    | admin@timetrack.com    | password   | —          |
-| Empleado | juan@timetrack.com     | password   | $15.000    |
-| Empleado | maria@timetrack.com    | password   | $18.000    |
-| Empleado | carlos@timetrack.com   | password   | $12.000    |
+| Rol      | Email                | Password |
+|----------|----------------------|----------|
+| Admin    | admin@timetrack.com  | password |
+| Empleado | juan@timetrack.com   | password |
+| Empleado | maria@timetrack.com  | password |
+| Empleado | carlos@timetrack.com | password |
 
----
+## Core API routes
 
-## 🔌 Endpoints de la API
+Public:
 
-### Públicos
-| Método | Ruta        | Descripción         |
-|--------|-------------|---------------------|
-| POST   | /api/login  | Iniciar sesión       |
+- `POST /api/login`
 
-### Autenticados (Bearer Token)
-| Método | Ruta            | Descripción                  |
-|--------|-----------------|------------------------------|
-| POST   | /api/logout     | Cerrar sesión                |
-| GET    | /api/me         | Datos del usuario actual      |
-| POST   | /api/clock-in   | Marcar entrada               |
-| POST   | /api/clock-out  | Marcar salida                |
-| GET    | /api/records    | Historial del empleado        |
-| GET    | /api/status     | Estado actual (activo/inactivo)|
+Authenticated:
 
-### Solo Admin
-| Método | Ruta                                    | Descripción                  |
-|--------|-----------------------------------------|------------------------------|
-| GET    | /api/admin/employees                    | Listar empleados             |
-| PUT    | /api/admin/employees/{id}/hourly-rate   | Actualizar tarifa/h          |
-| GET    | /api/admin/records                      | Todos los registros           |
-| GET    | /api/admin/summary?from=&to=            | Resumen por empleado          |
-| GET    | /api/admin/export?from=&to=             | Descargar Excel               |
+- `POST /api/logout`
+- `GET /api/me`
+- `POST /api/clock-in`
+- `POST /api/clock-out`
+- `GET /api/records`
+- `GET /api/status`
 
----
+Admin:
 
-## 🏗️ Conceptos de Laravel que aprenderás
+- `GET /api/admin/employees`
+- `PUT /api/admin/employees/{id}/hourly-rate`
+- `GET /api/admin/records`
+- `GET /api/admin/summary?from=&to=`
+- `GET /api/admin/export?from=&to=`
 
-- **Migraciones** → Crear y modificar tablas (`database/migrations/`)
-- **Modelos Eloquent** → ORM para interactuar con la BD (`app/Models/`)
-- **Controladores** → Lógica de negocio (`app/Http/Controllers/`)
-- **Rutas API** → Definición de endpoints (`routes/api.php`)
-- **Middleware** → Protección de rutas (`app/Http/Middleware/`)
-- **Sanctum** → Autenticación por tokens
-- **Exports** → Generación de archivos Excel (`app/Exports/`)
+Note: For the complete and latest route list, check `backend/routes/api.php`.
 
-## 🏗️ Conceptos de Vue que aprenderás
+## Frontend notes
 
-- **Composition API** → `ref`, `computed`, `onMounted`
-- **Vue Router** → Navegación y guards de rutas
-- **Pinia** → Manejo de estado global (auth)
-- **Axios** → Llamadas a la API con interceptores
-- **Componentes** → Reutilización y organización
-
----
-
-## 📦 Dependencias principales
-
-**Backend**
-- `laravel/sanctum` → Autenticación por tokens
-- `maatwebsite/excel` → Exportar a Excel
-
-**Frontend**
-- `vue` → Framework reactivo
-- `vue-router` → Enrutamiento SPA
-- `pinia` → Store de estado
-- `axios` → Cliente HTTP
-
----
-
-## 🧠 Flujo de la aplicación
-
-```
-[Vue Login] → POST /api/login → [Token JWT]
-     ↓
-[Dashboard] → GET /api/status → ¿está fichado?
-     ↓
-[Botón Entrada] → POST /api/clock-in → guarda clock_in + tarifa actual
-     ↓
-[Botón Salida]  → POST /api/clock-out → guarda clock_out + calcula horas
-     ↓
-[Admin Export]  → GET /api/admin/export?from=&to= → descarga .xlsx
-```
+- The sidebar supports collapse mode (icons only) in desktop.
+- On mobile, sidebar opens as an overlay menu.
+- Modals are responsive and optimized for small screens.
+- In schedules, creating a task from a selected day uses that day date by default.

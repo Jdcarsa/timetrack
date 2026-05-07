@@ -100,7 +100,7 @@
                         placeholder="Descripcion opcional..."></textarea>
                 </div>
 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                <div class="form-grid-2">
                     <div class="form-group">
                         <label class="form-label">Fecha inicio *</label>
                         <input v-model="form.start_date" type="date" class="form-input" />

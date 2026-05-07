@@ -223,6 +223,12 @@
     overflow-y: auto;
 }
 
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
 .available-tasks-list {
     display: flex;
     flex-direction: column;
@@ -329,5 +335,28 @@
 
     .modal-overlay {
         align-items: flex-end;
+    }
+
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-box .flex.gap-2.mt-4 {
+        flex-direction: column;
+    }
+
+    .modal-box .flex.gap-2.mt-4 .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .available-task-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .available-task-item .btn {
+        width: 100%;
+        justify-content: center;
     }
 }

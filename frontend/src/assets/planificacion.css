@@ -244,6 +244,12 @@
     overflow-y: auto;
 }
 
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
 /* Toggle switch */
 .recur-toggle {
     display: flex;
@@ -348,5 +354,18 @@
 
     .modal-overlay {
         align-items: flex-end;
+    }
+
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-box .flex.gap-2.mt-4 {
+        flex-direction: column;
+    }
+
+    .modal-box .flex.gap-2.mt-4 .btn {
+        width: 100%;
+        justify-content: center;
     }
 }
