@@ -1,5 +1,5 @@
 <template>
-  <div class="app-layout">
+  <div :class="['app-layout', { mobile: isMobileViewport }]">
 
     <div class="topbar">
       <div class="topbar-logo">
@@ -10,7 +10,7 @@
         </div>
         TimeTrack
       </div>
-      <button class="hamburger" @click="sidebarOpen = true">
+      <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
           <path fill-rule="evenodd" d="M3 6.75A.75.75 0 0 1 3.75 6h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 6.75ZM3 12a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm0 5.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
         </svg>
@@ -19,7 +19,7 @@
 
     <div :class="['sidebar-overlay', { open: sidebarOpen }]" @click="sidebarOpen = false"></div>
 
-    <aside :class="['sidebar', { open: sidebarOpen, collapsed: sidebarCollapsed }]">
+    <aside :class="['sidebar', { open: sidebarOpen, collapsed: applyCollapsed }]">
 
       <div class="sidebar-logo">
         <div class="logo-icon">
@@ -31,10 +31,10 @@
         <button
           class="hamburger desktop-only"
           style="margin-left:auto"
-          :title="sidebarCollapsed ? 'Expandir menu' : 'Contraer menu'"
+          :title="applyCollapsed ? 'Expandir menu' : 'Contraer menu'"
           @click="toggleSidebarCollapse"
         >
-          <svg v-if="!sidebarCollapsed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+          <svg v-if="!applyCollapsed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
             <path fill-rule="evenodd" d="M15.53 4.47a.75.75 0 0 1 0 1.06L9.06 12l6.47 6.47a.75.75 0 1 1-1.06 1.06l-7-7a.75.75 0 0 1 0-1.06l7-7a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
           </svg>
           <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
@@ -43,7 +43,7 @@
         </button>
       </div>
 
-      <nav class="sidebar-nav" @click="sidebarOpen = false">
+      <nav class="sidebar-nav" @click="handleNavClick">
         <RouterLink to="/" class="nav-item" exact-active-class="active" title="Dashboard">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="17" height="17">
             <path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z" />
@@ -132,17 +132,21 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import '@/assets/layout.css'
 
 const auth        = useAuthStore()
 const router      = useRouter()
 const sidebarOpen = ref(false)
+const MOBILE_BREAKPOINT = 1200
 const SIDEBAR_COLLAPSED_KEY = 'timetrack_sidebar_collapsed'
 const sidebarCollapsed = ref(
   typeof window !== 'undefined' && localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
 )
+const isMobileViewport = ref(false)
+const applyCollapsed = computed(() => !isMobileViewport.value && sidebarCollapsed.value)
 
 const initials = computed(() =>
   auth.user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) ?? '?'
@@ -154,215 +158,32 @@ async function handleLogout() {
 }
 
 function toggleSidebarCollapse() {
+  if (isMobileViewport.value) {
+    sidebarOpen.value = false
+    return
+  }
   sidebarCollapsed.value = !sidebarCollapsed.value
   if (typeof window !== 'undefined') {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed.value ? '1' : '0')
   }
 }
+
+function handleNavClick() {
+  if (isMobileViewport.value) sidebarOpen.value = false
+}
+
+function syncViewport() {
+  if (typeof window === 'undefined') return
+  isMobileViewport.value = window.innerWidth <= MOBILE_BREAKPOINT
+  if (isMobileViewport.value) sidebarOpen.value = false
+}
+
+onMounted(() => {
+  syncViewport()
+  window.addEventListener('resize', syncViewport)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', syncViewport)
+})
 </script>
-
-<style scoped>
-.app-layout { display: flex; min-height: 100vh; overflow-x: hidden; }
-
-.sidebar {
-  width: 220px;
-  min-height: 100vh;
-  background: #18181B;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-  transition: transform .25s ease, width .2s ease;
-  z-index: 50;
-}
-.sidebar.collapsed {
-  width: 76px;
-}
-
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 18px 16px 14px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-  border-bottom: 1px solid #27272A;
-}
-.logo-icon {
-  width: 32px; height: 32px;
-  background: #6366F1;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; flex-shrink: 0;
-}
-
-.sidebar-nav {
-  padding: 10px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  border-radius: 7px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #A1A1AA;
-  text-decoration: none;
-  transition: background .12s, color .12s;
-}
-.nav-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.nav-item:hover          { background: #27272A; color: #E4E4E7; }
-.nav-item.active         { background: #27272A; color: #fff; font-weight: 600; }
-.nav-item.active svg     { color: #6366F1; }
-
-.nav-section {
-  font-size: 10px; font-weight: 700;
-  letter-spacing: .08em; text-transform: uppercase;
-  color: #52525B;
-  padding: 14px 10px 4px;
-}
-
-.sidebar-footer {
-  padding: 12px;
-  border-top: 1px solid #27272A;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.user-row    { display: flex; align-items: center; gap: 10px; padding: 4px 2px; }
-.user-avatar {
-  width: 34px; height: 34px;
-  background: #3F3F46; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: #E4E4E7; flex-shrink: 0;
-}
-.user-info   { overflow: hidden; }
-.user-name   {
-  font-size: 13px; font-weight: 600; color: #E4E4E7;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.user-role   { font-size: 11px; color: #71717A; margin-top: 1px; }
-
-.logout-btn {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 8px 10px;
-  border-radius: 7px;
-  background: #27272A; border: 1px solid #3F3F46;
-  color: #E4E4E7; font-size: 13px; font-weight: 500;
-  cursor: pointer; transition: background .12s, color .12s;
-  font-family: inherit;
-}
-.logout-btn:hover { background: #DC2626; border-color: #DC2626; color: #fff; }
-
-.main-content { flex: 1; min-width: 0; overflow-y: auto; background: #F4F4F5; }
-.desktop-only { display: inline-flex; }
-.mobile-only { display: none; }
-
-.sidebar.collapsed .brand-text,
-.sidebar.collapsed .nav-label,
-.sidebar.collapsed .nav-section,
-.sidebar.collapsed .user-info {
-  display: none;
-}
-.sidebar.collapsed .sidebar-logo {
-  justify-content: center;
-}
-.sidebar.collapsed .nav-item {
-  justify-content: center;
-  padding-left: 8px;
-  padding-right: 8px;
-}
-.sidebar.collapsed .user-row {
-  justify-content: center;
-}
-.sidebar.collapsed .logout-btn {
-  justify-content: center;
-  padding-left: 8px;
-  padding-right: 8px;
-}
-
-.topbar {
-  display: none;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: #18181B;
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  border-bottom: 1px solid #27272A;
-}
-.topbar-logo {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 15px; font-weight: 700; color: #fff;
-}
-.hamburger {
-  background: none; border: none; cursor: pointer;
-  color: #A1A1AA; padding: 4px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 6px;
-  transition: background .12s;
-}
-.hamburger:hover { background: #27272A; color: #fff; }
-
-.sidebar-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.5);
-  z-index: 45;
-}
-
-@media (max-width: 1024px) {
-  .topbar { display: flex; }
-  .desktop-only { display: none; }
-  .mobile-only { display: inline-flex; }
-
-  .sidebar {
-    position: fixed;
-    top: 0; left: 0;
-    height: 100vh;
-    transform: translateX(-100%);
-    z-index: 50;
-    width: min(82vw, 280px);
-  }
-  .sidebar.collapsed {
-    width: min(82vw, 280px);
-  }
-  .sidebar.collapsed .brand-text { display: inline; }
-  .sidebar.collapsed .nav-label { display: inline; }
-  .sidebar.collapsed .nav-section { display: block; }
-  .sidebar.collapsed .user-info { display: block; }
-  .sidebar.collapsed .sidebar-logo,
-  .sidebar.collapsed .user-row,
-  .sidebar.collapsed .nav-item,
-  .sidebar.collapsed .logout-btn {
-    justify-content: flex-start;
-  }
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .sidebar-overlay.open {
-    display: block;
-  }
-
-  .main-content {
-    padding-top: 0;
-  }
-}
-</style>

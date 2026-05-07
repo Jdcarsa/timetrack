@@ -273,4 +273,15 @@ onUnmounted(() => clearInterval(clockInterval))
   flex-direction: column;
   align-items: center;
 }
+
+.table-wrap {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.table-wrap::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
 </style>
