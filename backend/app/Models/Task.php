@@ -50,4 +50,9 @@ class Task extends Model
             default       => $this->status,
         };
     }
+
+    public function schedules()
+    {
+        return $this->belongsToMany(Schedule::class, 'schedule_tasks');
+    }
 }

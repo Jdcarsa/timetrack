@@ -53,6 +53,16 @@ const routes = [
         component: () => import('@/views/admin/CalendarioView.vue'),
         meta: { adminOnly: true },
       },
+      {
+        path: 'proyectos',
+        name: 'Proyectos',
+        component: () => import('@/views/ProyectosView.vue'),
+      },
+      {
+        path: 'proyectos/:id',
+        name: 'Cronograma',
+        component: () => import('@/views/CronogramaView.vue'),
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

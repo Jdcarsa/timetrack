@@ -1,7 +1,6 @@
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 
-// ── Helpers de fecha ────────────────────────────────────────────
 export function getMonday(date) {
     const d = new Date(date)
     const day = d.getDay()
@@ -29,7 +28,6 @@ export function emptyForm(date = '') {
     }
 }
 
-// ── Composable principal ────────────────────────────────────────
 export function usePlanificacion() {
 
     const tasks = ref([])
@@ -42,7 +40,6 @@ export function usePlanificacion() {
     const currentWeekStart = ref(getMonday(new Date()))
     const form = ref(emptyForm())
 
-    // ── Computed ──────────────────────────────────────────────────
     const weekLabel = computed(() => {
         const start = currentWeekStart.value
         const end = addDays(start, 6)
@@ -55,7 +52,7 @@ export function usePlanificacion() {
     )
 
     const weekDays = computed(() => {
-        const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        const dayNames = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo']
         const today = toYMD(new Date())
 
         return Array.from({ length: 7 }, (_, i) => {
@@ -73,7 +70,6 @@ export function usePlanificacion() {
         })
     })
 
-    // ── API ───────────────────────────────────────────────────────
     async function fetchTasks() {
         loading.value = true
         try {
@@ -102,11 +98,8 @@ export function usePlanificacion() {
             closeForm()
         } catch (e) {
             const errs = e.response?.data?.errors
-            if (errs) {
-                errors.value = Object.fromEntries(Object.entries(errs).map(([k, v]) => [k, v[0]]))
-            } else {
-                formError.value = e.response?.data?.message || 'Error al guardar.'
-            }
+            if (errs) errors.value = Object.fromEntries(Object.entries(errs).map(([k, v]) => [k, v[0]]))
+            else formError.value = e.response?.data?.message || 'Error al guardar.'
         } finally {
             saving.value = false
         }
@@ -123,7 +116,7 @@ export function usePlanificacion() {
     }
 
     async function deleteTask(task) {
-        if (!confirm(`¿Eliminar "${task.title}"?`)) return
+        if (!confirm(`Eliminar "${task.title}"?`)) return
         try {
             await api.delete(`/tasks/${task.id}`)
             tasks.value = tasks.value.filter(t => t.id !== task.id)
@@ -132,13 +125,11 @@ export function usePlanificacion() {
         }
     }
 
-    // ── Navegación ────────────────────────────────────────────────
     function changeWeek(direction) {
         currentWeekStart.value = addDays(currentWeekStart.value, direction * 7)
         fetchTasks()
     }
 
-    // ── Modal ─────────────────────────────────────────────────────
     function openForm(date = '', task = null) {
         editingTask.value = task
         form.value = task ? { ...task } : emptyForm(date)
@@ -154,12 +145,9 @@ export function usePlanificacion() {
     }
 
     return {
-        // Estado
         tasks, loading, saving, showModal,
         editingTask, formError, errors, form,
-        // Computed
         weekLabel, isCurrentWeek, weekDays,
-        // Métodos
         fetchTasks, saveTask, changeStatus,
         deleteTask, changeWeek, openForm, closeForm,
     }

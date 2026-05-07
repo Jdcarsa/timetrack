@@ -136,3 +136,15 @@
     gap: 4px;
     text-align: center;
 }
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .employees-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+

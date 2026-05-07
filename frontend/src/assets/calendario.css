@@ -207,3 +207,18 @@
         transform: rotate(360deg);
     }
 }
+
+@media (max-width: 768px) {
+    .week-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .controls-bar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .controls-bar select {
+        width: 100% !important;
+    }
+}

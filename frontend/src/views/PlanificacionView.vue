@@ -87,7 +87,15 @@
                             <span v-if="task.is_recurring" title="Tarea recurrente">🔁</span>
                         </p>
 
-                        <p class="task-title">{{ task.title }}</p>
+                        <p class="task-title">{{ task.title }}</p>>
+
+                        <span v-if="task.schedule" class="schedule-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="9" height="9">
+                            <path fill-rule="evenodd" d="M1.5 5.625c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v12.75c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 18.375V5.625Z" clip-rule="evenodd" />
+                        </svg>
+                        {{ task.schedule.title }}
+                        </span>
+
                         <p v-if="task.description" class="task-desc">{{ task.description }}</p>
 
                         <div class="task-footer">

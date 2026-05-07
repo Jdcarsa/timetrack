@@ -5,6 +5,8 @@ use App\Http\Controllers\TimeRecordController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\TaskController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ScheduleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +37,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/tasks/{task}',             [TaskController::class, 'update']);
     Route::patch('/tasks/{task}/status',    [TaskController::class, 'updateStatus']);
     Route::delete('/tasks/{task}',          [TaskController::class, 'destroy']);
+
+    Route::get('/projects',          [ProjectController::class, 'index']);
+    Route::get('/projects/{project}', [ProjectController::class, 'show']);
+
+    Route::middleware('is_admin')->group(function () {
+        Route::post('/projects',             [ProjectController::class, 'store']);
+        Route::put('/projects/{project}',    [ProjectController::class, 'update']);
+        Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
+    });
+
+    Route::prefix('projects/{project}/schedules')->group(function () {
+        Route::get('/',                                [ScheduleController::class, 'index']);
+        Route::post('/',                               [ScheduleController::class, 'store']);
+        Route::put('/{schedule}',                      [ScheduleController::class, 'update']);
+        Route::delete('/{schedule}',                   [ScheduleController::class, 'destroy']);
+        Route::post('/{schedule}/tasks',               [ScheduleController::class, 'addTask']);
+        Route::delete('/{schedule}/tasks/{task}',      [ScheduleController::class, 'removeTask']);
+        Route::get('/{schedule}/available-tasks',      [ScheduleController::class, 'availableTasks']);
+    });
 
     /*
     |----------------------------------------------------------------------

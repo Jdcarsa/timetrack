@@ -1,0 +1,333 @@
+.project-header-card {
+    background: #18181B;
+    border-radius: 12px;
+    padding: 24px;
+    color: #fff;
+    margin-bottom: 20px;
+}
+
+.project-header-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.project-header-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, .6);
+}
+
+.project-header-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.schedules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.schedule-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.schedule-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.schedule-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.schedule-week {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.schedule-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.schedule-tasks {
+    padding: 16px 20px;
+}
+
+.tasks-week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+
+@media (max-width: 900px) {
+    .tasks-week-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .tasks-week-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.week-day-col {
+    min-height: 80px;
+}
+
+.week-day-name {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.week-day-date {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.task-chip {
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-bottom: 5px;
+    border-left: 3px solid var(--border);
+    background: var(--bg);
+    font-size: 12px;
+    position: relative;
+}
+
+.task-chip-title {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.task-chip-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.task-chip-user {
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 1px;
+}
+
+.task-chip-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+.task-chip-remove:hover {
+    background: #FEE2E2;
+    color: var(--danger);
+}
+
+.task-chip.status-pending {
+    border-left-color: #A1A1AA;
+}
+
+.task-chip.status-in_progress {
+    border-left-color: #6366F1;
+}
+
+.task-chip.status-completed {
+    border-left-color: #16A34A;
+    opacity: .8;
+}
+
+.add-task-btn-small {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    padding: 5px;
+    border: 1.5px dashed var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all .12s;
+    font-family: inherit;
+    margin-top: 4px;
+}
+
+.add-task-btn-small:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: #EEF2FF;
+}
+
+.empty-schedule {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+}
+
+.modal-box {
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.available-tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.available-task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-2);
+    gap: 10px;
+}
+
+.available-task-info {
+    flex: 1;
+}
+
+.available-task-title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.available-task-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.field-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: 3px;
+}
+
+.loading-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .12s;
+}
+
+.icon-btn:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.icon-btn.danger:hover {
+    background: #FEE2E2;
+    color: var(--danger);
+}
+
+@media (max-width: 768px) {
+    .tasks-week-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .schedule-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .schedule-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .project-header-meta {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .modal-box {
+        max-width: 100%;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .modal-overlay {
+        align-items: flex-end;
+    }
+}

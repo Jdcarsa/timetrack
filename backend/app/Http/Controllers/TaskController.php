@@ -73,16 +73,20 @@ class TaskController extends Controller
             'end_time'     => 'required|date_format:H:i|after:start_time',
             'is_recurring' => 'boolean',
             'recur_day'    => 'required_if:is_recurring,true|nullable|integer|min:0|max:6',
+            'user_id'      => 'nullable|exists:users,id',
+            'schedule_id'  => 'nullable|exists:schedules,id',
         ]);
-
-        // Si es recurrente, la fecha se calcula desde recur_day
-        // Si no, usamos la fecha que mandaron
+    
+        $assignedUserId = $request->filled('user_id')
+            ? $request->user_id
+            : $request->user()->id;
+    
         $date = $request->is_recurring
-            ? Carbon::now()->startOfWeek()->addDays($request->recur_day)
-            : Carbon::parse($request->date);
-
+            ? \Carbon\Carbon::now()->startOfWeek()->addDays($request->recur_day)
+            : \Carbon\Carbon::parse($request->date);
+    
         $task = Task::create([
-            'user_id'      => $request->user()->id,
+            'user_id'      => $assignedUserId,
             'title'        => $request->title,
             'description'  => $request->description,
             'date'         => $date,
@@ -92,7 +96,13 @@ class TaskController extends Controller
             'is_recurring' => $request->boolean('is_recurring'),
             'recur_day'    => $request->is_recurring ? $request->recur_day : null,
         ]);
-
+    
+        if ($request->filled('schedule_id')) {
+            $task->schedules()->attach($request->schedule_id);
+        }
+    
+        $task->load('user:id,name');
+    
         return response()->json([
             'message' => 'Tarea creada correctamente.',
             'task'    => $this->formatTask($task),
@@ -218,6 +228,10 @@ class TaskController extends Controller
     // ─────────────────────────────────────────
     private function formatTask(Task $task, bool $withUser = false): array
     {
+        $task->loadMissing('schedules:id,title,project_id');
+
+        $schedule = $task->schedules->first();
+
         $data = [
             'id'           => $task->id,
             'title'        => $task->title,
@@ -230,6 +244,10 @@ class TaskController extends Controller
             'is_recurring' => $task->is_recurring,
             'recur_day'    => $task->recur_day,
             'day_name'     => $task->day_name,
+            'schedule'     => $schedule ? [
+                'id'    => $schedule->id,
+                'title' => $schedule->title,
+            ] : null,
         ];
 
         if ($withUser && $task->relationLoaded('user')) {
