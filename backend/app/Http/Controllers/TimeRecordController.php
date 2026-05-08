@@ -40,26 +40,29 @@ class TimeRecordController extends Controller
     public function clockOut(Request $request)
     {
         $user = $request->user();
-
+    
         $record = TimeRecord::where('user_id', $user->id)
             ->whereNull('clock_out')
             ->latest('clock_in')
             ->first();
-
+    
         if (!$record) {
             return response()->json([
                 'message' => 'No tienes una entrada activa para registrar salida.',
             ], 422);
         }
-
-        $clockOut    = now();
-        $totalHours  = $clockOut->diffInMinutes($record->clock_in) / 60;
-
+    
+        $clockOut = now();
+        
+        $diffInMinutes = $record->clock_in->diffInMinutes($clockOut);
+        
+        $totalHours = $diffInMinutes / 60;
+    
         $record->update([
             'clock_out'   => $clockOut,
             'total_hours' => round($totalHours, 2),
         ]);
-
+        
         return response()->json([
             'message' => 'Salida registrada correctamente.',
             'record'  => $record,
