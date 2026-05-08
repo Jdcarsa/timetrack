@@ -1,19 +1,20 @@
 .app-layout {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   overflow-x: hidden;
 }
 
 .sidebar {
   width: 220px;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: #18181b;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -179,7 +180,9 @@
 .main-content {
   flex: 1;
   min-width: 0;
+  height: 100dvh;
   overflow-y: auto;
+  overflow-x: hidden;
   background: #f4f4f5;
 }
 
@@ -260,6 +263,8 @@
 
 .app-layout.mobile {
   display: block;
+  min-height: 100dvh;
+  height: auto;
 }
 
 .app-layout.mobile .topbar {
@@ -278,10 +283,15 @@
   position: fixed;
   top: 0;
   left: 0;
-  height: 100vh;
+  height: 100dvh;
   transform: translateX(-100%);
   width: min(74vw, 260px);
   z-index: 50;
+}
+
+.app-layout.mobile .main-content {
+  height: auto;
+  min-height: calc(100dvh - 58px);
 }
 
 .app-layout.mobile .sidebar.collapsed {
@@ -313,9 +323,11 @@
   justify-content: flex-start;
 }
 
-@media (max-width: 1200px), (hover: none) and (pointer: coarse) {
+@media (max-width: 1200px) {
   .app-layout {
     display: block;
+    min-height: 100dvh;
+    height: auto;
   }
 
   .topbar {
@@ -334,7 +346,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100dvh;
     transform: translateX(-100%);
     width: min(74vw, 260px);
   }
@@ -345,5 +357,11 @@
 
   .sidebar-overlay.open {
     display: block;
+  }
+
+  .main-content {
+    height: auto;
+    min-height: calc(100dvh - 58px);
+    overflow-x: hidden;
   }
 }

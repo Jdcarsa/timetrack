@@ -59,4 +59,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Schedule::class, 'created_by');
     }
+
+    public function workSchedules()
+    {
+        return $this->hasMany(UserWorkSchedule::class)->orderBy('day_of_week');
+    }
 }

@@ -4,6 +4,11 @@
   padding: 0;
 }
 
+html, body, #app {
+  width: 100%;
+  min-height: 100%;
+}
+
 :root {
   --primary:        #18181B;
   --primary-dark:   #09090B;
@@ -29,6 +34,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  overflow-x: hidden;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }

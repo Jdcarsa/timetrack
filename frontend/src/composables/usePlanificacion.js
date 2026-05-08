@@ -37,8 +37,25 @@ export function usePlanificacion() {
     const editingTask = ref(null)
     const formError = ref('')
     const errors = ref({})
+    const scheduleLoading = ref(false)
+    const scheduleSaving = ref(false)
+    const scheduleError = ref('')
+    const scheduleSuccess = ref('')
     const currentWeekStart = ref(getMonday(new Date()))
     const form = ref(emptyForm())
+    const scheduleDays = ref(defaultScheduleDays())
+
+    function defaultScheduleDays() {
+        return [
+            { day_of_week: 0, name: 'Lunes', is_working: true, start_time: '08:00', end_time: '17:00', break_minutes: 60 },
+            { day_of_week: 1, name: 'Martes', is_working: true, start_time: '08:00', end_time: '17:00', break_minutes: 60 },
+            { day_of_week: 2, name: 'Miercoles', is_working: true, start_time: '08:00', end_time: '17:00', break_minutes: 60 },
+            { day_of_week: 3, name: 'Jueves', is_working: true, start_time: '08:00', end_time: '17:00', break_minutes: 60 },
+            { day_of_week: 4, name: 'Viernes', is_working: true, start_time: '08:00', end_time: '17:00', break_minutes: 60 },
+            { day_of_week: 5, name: 'Sabado', is_working: false, start_time: null, end_time: null, break_minutes: 0 },
+            { day_of_week: 6, name: 'Domingo', is_working: false, start_time: null, end_time: null, break_minutes: 0 },
+        ]
+    }
 
     const weekLabel = computed(() => {
         const start = currentWeekStart.value
@@ -79,6 +96,59 @@ export function usePlanificacion() {
             tasks.value = data.tasks
         } finally {
             loading.value = false
+        }
+    }
+
+    async function fetchWorkSchedule() {
+        scheduleLoading.value = true
+        scheduleError.value = ''
+        try {
+            const { data } = await api.get('/work-schedule')
+            const serverDays = data.days ?? []
+            scheduleDays.value = defaultScheduleDays().map(base => {
+                const current = serverDays.find(d => Number(d.day_of_week) === base.day_of_week)
+                if (!current) return base
+                return {
+                    ...base,
+                    is_working: !!current.is_working,
+                    start_time: current.start_time,
+                    end_time: current.end_time,
+                    break_minutes: Number(current.break_minutes ?? 0),
+                }
+            })
+        } catch {
+            scheduleError.value = 'No se pudo cargar tu horario.'
+        } finally {
+            scheduleLoading.value = false
+        }
+    }
+
+    async function saveWorkSchedule() {
+        scheduleSaving.value = true
+        scheduleError.value = ''
+        scheduleSuccess.value = ''
+
+        try {
+            const payload = {
+                days: scheduleDays.value.map(d => ({
+                    day_of_week: d.day_of_week,
+                    is_working: !!d.is_working,
+                    start_time: d.is_working ? d.start_time : null,
+                    end_time: d.is_working ? d.end_time : null,
+                    break_minutes: d.is_working ? Number(d.break_minutes || 0) : 0,
+                })),
+            }
+
+            const { data } = await api.put('/work-schedule', payload)
+            scheduleDays.value = data.days.map(d => ({
+                ...d,
+                break_minutes: Number(d.break_minutes ?? 0),
+            }))
+            scheduleSuccess.value = 'Horario guardado correctamente.'
+        } catch (e) {
+            scheduleError.value = e.response?.data?.message || 'Error al guardar el horario.'
+        } finally {
+            scheduleSaving.value = false
         }
     }
 
@@ -147,8 +217,10 @@ export function usePlanificacion() {
     return {
         tasks, loading, saving, showModal,
         editingTask, formError, errors, form,
+        scheduleLoading, scheduleSaving, scheduleError, scheduleSuccess, scheduleDays,
         weekLabel, isCurrentWeek, weekDays,
         fetchTasks, saveTask, changeStatus,
         deleteTask, changeWeek, openForm, closeForm,
+        fetchWorkSchedule, saveWorkSchedule,
     }
 }

@@ -6,6 +6,7 @@ export function useExport() {
     const from = ref('')
     const to = ref('')
     const userId = ref('')
+    const mode = ref('actual')
     const employees = ref([])
     const summary = ref([])
     const loading = ref(false)
@@ -16,6 +17,7 @@ export function useExport() {
     const totalRecords = computed(() => summary.value.reduce((s, r) => s + r.total_records, 0))
     const totalHours = computed(() => summary.value.reduce((s, r) => s + r.total_hours, 0).toFixed(2))
     const totalEarnings = computed(() => summary.value.reduce((s, r) => s + r.total_earnings, 0))
+    const modeLabel = computed(() => mode.value === 'schedule' ? 'Horario planificado' : 'Horas contadas')
 
     const formatMoney = (v) => Number(v).toLocaleString('es-CO', { minimumFractionDigits: 0 })
 
@@ -31,7 +33,12 @@ export function useExport() {
         summary.value = []
         try {
             const { data } = await api.get('/admin/summary', {
-                params: { from: from.value, to: to.value, user_id: userId.value || undefined }
+                params: {
+                    from: from.value,
+                    to: to.value,
+                    user_id: userId.value || undefined,
+                    mode: mode.value,
+                }
             })
             summary.value = data
             if (data.length === 0) error.value = 'No hay registros completados en ese rango de fechas.'
@@ -48,7 +55,12 @@ export function useExport() {
         exporting.value = true
         try {
             const response = await api.get('/admin/export', {
-                params: { from: from.value, to: to.value, user_id: userId.value || undefined },
+                params: {
+                    from: from.value,
+                    to: to.value,
+                    user_id: userId.value || undefined,
+                    mode: mode.value,
+                },
                 responseType: 'blob',
             })
             const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -69,10 +81,10 @@ export function useExport() {
 
     return {
         // Estado
-        from, to, userId, employees, summary,
+        from, to, userId, mode, employees, summary,
         loading, exporting, error, success,
         // Computed
-        totalRecords, totalHours, totalEarnings,
+        totalRecords, totalHours, totalEarnings, modeLabel,
         // Métodos
         fetchEmployees, previewSummary, downloadExcel,
         formatMoney,

@@ -7,6 +7,7 @@ use App\Http\Controllers\TaskController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\WorkScheduleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +32,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/clock-out',  [TimeRecordController::class, 'clockOut']);
     Route::get('/records',     [TimeRecordController::class, 'myRecords']);
     Route::get('/status',      [TimeRecordController::class, 'status']);
+    Route::get('/work-schedule', [WorkScheduleController::class, 'show']);
+    Route::put('/work-schedule', [WorkScheduleController::class, 'update']);
 
     Route::get('/tasks',                    [TaskController::class, 'index']);
     Route::post('/tasks',                   [TaskController::class, 'store']);

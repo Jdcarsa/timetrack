@@ -4,8 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\TimeRecord;
+use App\Models\UserWorkSchedule;
 use App\Exports\TimeRecordsExport;
+use App\Support\WorkScheduleHelper;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Facades\Excel;
 
 class AdminController extends Controller
@@ -13,10 +17,27 @@ class AdminController extends Controller
     // GET /api/admin/employees — Lista todos los empleados
     public function employees()
     {
-        $employees = User::where('role', 'employee')
+        $hasWorkSchedulesTable = Schema::hasTable('user_work_schedules');
+
+        $query = User::where('role', 'employee')
             ->select('id', 'name', 'email', 'hourly_rate')
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+
+        if ($hasWorkSchedulesTable) {
+            $query->with('workSchedules');
+        }
+
+        $employees = $query->get()->map(function ($employee) use ($hasWorkSchedulesTable) {
+            return [
+                'id' => $employee->id,
+                'name' => $employee->name,
+                'email' => $employee->email,
+                'hourly_rate' => $employee->hourly_rate,
+                'work_schedule' => $hasWorkSchedulesTable
+                    ? WorkScheduleHelper::normalizeForResponse($employee->workSchedules)
+                    : WorkScheduleHelper::defaultWeekTemplate(),
+            ];
+        });
 
         return response()->json($employees);
     }
@@ -67,12 +88,14 @@ class AdminController extends Controller
         $request->validate([
             'from' => 'required|date',
             'to'   => 'required|date|after_or_equal:from',
+            'mode' => 'nullable|in:actual,schedule',
         ]);
 
         $filename = 'timetrack_' . $request->from . '_' . $request->to . '.xlsx';
+        $mode = $request->input('mode', 'actual');
 
         return Excel::download(
-            new TimeRecordsExport($request->from, $request->to, $request->user_id),
+            new TimeRecordsExport($request->from, $request->to, $request->user_id, $mode),
             $filename
         );
     }
@@ -83,11 +106,19 @@ class AdminController extends Controller
         $request->validate([
             'from' => 'required|date',
             'to'   => 'required|date|after_or_equal:from',
+            'mode' => 'nullable|in:actual,schedule',
         ]);
+
+        $mode = $request->input('mode', 'actual');
+
+        if ($mode === 'schedule') {
+            return response()->json($this->scheduleSummary($request));
+        }
 
         $records = TimeRecord::with('user:id,name,email,hourly_rate')
             ->whereBetween('clock_in', [$request->from . ' 00:00:00', $request->to . ' 23:59:59'])
             ->whereNotNull('clock_out')
+            ->when($request->filled('user_id'), fn($q) => $q->where('user_id', $request->user_id))
             ->get();
 
         // Agrupa por empleado
@@ -127,9 +158,76 @@ class AdminController extends Controller
             'hourly_rate' => $request->hourly_rate,
         ]);
 
+        $this->ensureInitialSchedule($user->id);
+
         return response()->json([
             'message' => 'Empleado creado correctamente.',
             'user'    => $user->only(['id', 'name', 'email', 'hourly_rate']),
         ], 201);
+    }
+
+    private function ensureInitialSchedule(int $userId): void
+    {
+        if (!Schema::hasTable('user_work_schedules')) {
+            return;
+        }
+
+        $exists = UserWorkSchedule::where('user_id', $userId)->exists();
+        if ($exists) return;
+
+        $now = now();
+        $rows = collect(WorkScheduleHelper::defaultWeekTemplate())->map(fn($d) => [
+            'user_id' => $userId,
+            'day_of_week' => $d['day_of_week'],
+            'is_working' => $d['is_working'],
+            'start_time' => $d['start_time'],
+            'end_time' => $d['end_time'],
+            'break_minutes' => $d['break_minutes'],
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        UserWorkSchedule::insert($rows);
+    }
+
+    private function scheduleSummary(Request $request)
+    {
+        $from = Carbon::parse($request->from)->startOfDay();
+        $to = Carbon::parse($request->to)->startOfDay();
+
+        $hasWorkSchedulesTable = Schema::hasTable('user_work_schedules');
+
+        $users = User::when($hasWorkSchedulesTable, fn($q) => $q->with('workSchedules'))
+            ->where('role', 'employee')
+            ->when($request->filled('user_id'), fn($q) => $q->where('id', $request->user_id))
+            ->orderBy('name')
+            ->get();
+
+        $summary = $users->map(function (User $user) use ($from, $to, $hasWorkSchedulesTable) {
+            $scheduleMap = [];
+            if ($hasWorkSchedulesTable) {
+                $this->ensureInitialSchedule($user->id);
+                $user->load('workSchedules');
+                $scheduleMap = WorkScheduleHelper::toMap($user->workSchedules);
+            } else {
+                $default = collect(WorkScheduleHelper::defaultWeekTemplate());
+                $scheduleMap = $default->keyBy('day_of_week')->all();
+            }
+
+            $calc = WorkScheduleHelper::plannedMinutesInRange($scheduleMap, $from, $to);
+            $hours = round($calc['minutes'] / 60, 2);
+            $earnings = round($hours * (float) $user->hourly_rate, 2);
+
+            return [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'total_records' => $calc['days'],
+                'total_hours' => $hours,
+                'total_earnings' => $earnings,
+            ];
+        })->filter(fn($row) => $row['total_hours'] > 0)->values();
+
+        return $summary;
     }
 }

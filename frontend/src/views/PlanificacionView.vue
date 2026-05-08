@@ -49,6 +49,69 @@
             </button>
         </div>
 
+        <div class="card mb-4">
+            <div class="flex items-center justify-between mb-4" style="gap:12px">
+                <div>
+                    <h3 style="font-size:15px; font-weight:700">Mi horario laboral</h3>
+                    <p class="text-muted" style="font-size:12px">Define tus dias y horas. Se usa para exportes por horario.</p>
+                </div>
+                <button class="btn btn-outline btn-sm" :disabled="scheduleLoading || scheduleSaving" @click="fetchWorkSchedule">
+                    Recargar
+                </button>
+            </div>
+
+            <div v-if="scheduleLoading" class="text-muted" style="font-size:13px">Cargando horario...</div>
+
+            <template v-else>
+                <div class="schedule-batch">
+                    <p class="schedule-batch-title">Aplicar a varios dias</p>
+
+                    <div class="schedule-day-chips">
+                        <button v-for="d in DAY_OPTIONS" :key="d.value" type="button" class="day-chip"
+                            :class="{ active: selectedScheduleDays.includes(d.value) }"
+                            @click="toggleScheduleDay(d.value)">
+                            {{ d.short }}
+                        </button>
+                    </div>
+
+                    <div class="schedule-batch-actions">
+                        <button type="button" class="btn btn-ghost btn-sm" @click="selectWeekdays">L-V</button>
+                        <button type="button" class="btn btn-ghost btn-sm" @click="selectAllDays">Todos</button>
+                        <button type="button" class="btn btn-ghost btn-sm" @click="clearSelectedDays">Limpiar</button>
+                    </div>
+
+                    <div class="schedule-batch-form">
+                        <label class="schedule-day-label" style="min-width:0">
+                            <input v-model="batchWorking" type="checkbox" />
+                            <span>Dia laboral</span>
+                        </label>
+
+                        <input v-model="batchStartTime" type="time" class="form-input" :disabled="!batchWorking" />
+                        <input v-model="batchEndTime" type="time" class="form-input" :disabled="!batchWorking" />
+                        <input v-model.number="batchBreakMinutes" type="number" min="0" max="300" class="form-input"
+                            :disabled="!batchWorking" placeholder="Descanso (min)" />
+
+                        <button type="button" class="btn btn-outline btn-sm" @click="applyBatchSchedule">
+                            Aplicar seleccion
+                        </button>
+                    </div>
+                </div>
+
+                <p class="text-muted" style="font-size:12px">
+                    Usa los selectores de arriba para aplicar tu horario a los dias que necesites y luego guarda.
+                </p>
+            </template>
+
+            <div v-if="scheduleError" class="alert alert-error mt-4">{{ scheduleError }}</div>
+            <div v-if="scheduleSuccess" class="alert alert-success mt-4">{{ scheduleSuccess }}</div>
+
+            <div class="flex gap-2 mt-4">
+                <button class="btn btn-primary" :disabled="scheduleSaving || scheduleLoading" @click="saveWorkSchedule">
+                    {{ scheduleSaving ? 'Guardando...' : 'Guardar horario' }}
+                </button>
+            </div>
+        </div>
+
         <!-- Calendario semanal -->
         <div v-if="loading" class="card" style="text-align:center; padding:40px">
             <div class="loading-spinner" style="margin:0 auto"></div>
@@ -87,7 +150,7 @@
                             <span v-if="task.is_recurring" title="Tarea recurrente">🔁</span>
                         </p>
 
-                        <p class="task-title">{{ task.title }}</p>>
+                        <p class="task-title">{{ task.title }}</p>
 
                         <span v-if="task.schedule" class="schedule-badge">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="9" height="9">
@@ -206,17 +269,80 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { usePlanificacion } from '@/composables/usePlanificacion'
 import '@/assets/planificacion.css'
+
+const DAY_OPTIONS = [
+    { value: 0, short: 'L' },
+    { value: 1, short: 'M' },
+    { value: 2, short: 'X' },
+    { value: 3, short: 'J' },
+    { value: 4, short: 'V' },
+    { value: 5, short: 'S' },
+    { value: 6, short: 'D' },
+]
 
 const {
     loading, saving, showModal, editingTask,
     formError, errors, form,
+    scheduleLoading, scheduleSaving, scheduleError, scheduleSuccess, scheduleDays,
     weekLabel, isCurrentWeek, weekDays,
     fetchTasks, saveTask, changeStatus,
     deleteTask, changeWeek, openForm, closeForm,
+    fetchWorkSchedule, saveWorkSchedule,
 } = usePlanificacion()
 
-onMounted(fetchTasks)
+const selectedScheduleDays = ref([0, 1, 2, 3, 4])
+const batchWorking = ref(true)
+const batchStartTime = ref('08:00')
+const batchEndTime = ref('17:00')
+const batchBreakMinutes = ref(60)
+
+function toggleScheduleDay(day) {
+    if (selectedScheduleDays.value.includes(day)) {
+        selectedScheduleDays.value = selectedScheduleDays.value.filter(d => d !== day)
+        return
+    }
+    selectedScheduleDays.value = [...selectedScheduleDays.value, day].sort((a, b) => a - b)
+}
+
+function selectWeekdays() {
+    selectedScheduleDays.value = [0, 1, 2, 3, 4]
+}
+
+function selectAllDays() {
+    selectedScheduleDays.value = [0, 1, 2, 3, 4, 5, 6]
+}
+
+function clearSelectedDays() {
+    selectedScheduleDays.value = []
+}
+
+function applyBatchSchedule() {
+    if (selectedScheduleDays.value.length === 0) {
+        alert('Selecciona al menos un dia para aplicar cambios.')
+        return
+    }
+
+    scheduleDays.forEach(day => {
+        if (!selectedScheduleDays.value.includes(day.day_of_week)) return
+
+        day.is_working = batchWorking.value
+        if (batchWorking.value) {
+            day.start_time = batchStartTime.value
+            day.end_time = batchEndTime.value
+            day.break_minutes = Number(batchBreakMinutes.value || 0)
+        } else {
+            day.start_time = null
+            day.end_time = null
+            day.break_minutes = 0
+        }
+    })
+}
+
+onMounted(() => {
+    fetchTasks()
+    fetchWorkSchedule()
+})
 </script>

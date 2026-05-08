@@ -25,9 +25,12 @@ export function useEmpleados() {
     // ── API ───────────────────────────────────────────────────────
     async function fetchEmployees() {
         loading.value = true
+        rateError.value = ''
         try {
             const { data } = await api.get('/admin/employees')
             employees.value = data
+        } catch (e) {
+            rateError.value = e.response?.data?.message || 'Error al cargar empleados.'
         } finally {
             loading.value = false
         }

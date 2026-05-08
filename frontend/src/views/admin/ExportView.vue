@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page">
 
     <div class="flex items-center justify-between mb-4">
@@ -35,6 +35,13 @@
           <select v-model="userId" class="form-input">
             <option value="">Todos los empleados</option>
             <option v-for="e in employees" :key="e.id" :value="e.id">{{ e.name }}</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:20px">
+          <label class="form-label">Modo de calculo</label>
+          <select v-model="mode" class="form-input">
+            <option value="actual">Horas contadas (clock in/out)</option>
+            <option value="schedule">Horario planificado</option>
           </select>
         </div>
 
@@ -78,7 +85,7 @@
               <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
             </svg>
           </div>
-          <p style="font-weight:600; margin-bottom:4px">Sin datos aún</p>
+          <p style="font-weight:600; margin-bottom:4px">Sin datos</p>
           <p class="text-muted" style="font-size:13px; text-align:center">
             Selecciona un rango de fechas y haz clic en<br><strong>"Ver resumen"</strong> para previsualizar
           </p>
@@ -92,8 +99,9 @@
         <div v-else class="card" style="padding:0; overflow:hidden">
           <div class="preview-header">
             <div>
-              <p style="font-weight:700; font-size:14px; color:#fff">Resumen del período</p>
-              <p style="font-size:12px; color:rgba(255,255,255,.65); margin-top:2px">{{ from }} → {{ to }}</p>
+              <p style="font-weight:700; font-size:14px; color:#fff">Resumen del perÃ­odo</p>
+              <p style="font-size:12px; color:rgba(255,255,255,.65); margin-top:2px">{{ from }} â†’ {{ to }}</p>
+              <p style="font-size:12px; color:rgba(255,255,255,.65); margin-top:2px">{{ modeLabel }}</p>
             </div>
             <div class="preview-stats">
               <div class="preview-stat">
@@ -156,12 +164,13 @@ import { useExport } from '@/composables/useExport'
 import '@/assets/export.css'
 
 const {
-  from, to, userId, employees, summary,
+  from, to, userId, mode, employees, summary,
   loading, exporting, error, success,
-  totalRecords, totalHours, totalEarnings,
+  totalRecords, totalHours, totalEarnings, modeLabel,
   fetchEmployees, previewSummary, downloadExcel,
   formatMoney,
 } = useExport()
 
 onMounted(fetchEmployees)
 </script>
+
