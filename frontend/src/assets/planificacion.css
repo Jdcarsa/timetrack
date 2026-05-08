@@ -454,3 +454,32 @@
         max-height: 320px;
     }
 }
+
+
+/* Estilo para mostrar el horario laboral en cada día */
+.work-hours-info {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 6px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+    border-radius: 6px;
+}
+
+.work-hours-info.working-day {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.work-hours-info.non-working-day {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* Advertencia de conflicto de horario */
+.task-warning {
+    background: #fff3e0 !important;
+    border-left: 3px solid #ff9800 !important;
+}

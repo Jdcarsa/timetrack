@@ -49,13 +49,18 @@
             </button>
         </div>
 
+        <!-- Horario Laboral -->
         <div class="card mb-4">
             <div class="flex items-center justify-between mb-4" style="gap:12px">
                 <div>
                     <h3 style="font-size:15px; font-weight:700">Mi horario laboral</h3>
-                    <p class="text-muted" style="font-size:12px">Define tus dias y horas. Se usa para exportes por horario.</p>
+                    <p class="text-muted" style="font-size:12px">Define tus dias y horas. Se usa para validar tareas.</p>
                 </div>
                 <button class="btn btn-outline btn-sm" :disabled="scheduleLoading || scheduleSaving" @click="fetchWorkSchedule">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                        <path fill-rule="evenodd" d="M4.5 12a.75.75 0 0 1 .75-.75h13.5a.75.75 0 0 1 0 1.5H5.25A.75.75 0 0 1 4.5 12Z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M12 4.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-1.5 0V5.25A.75.75 0 0 1 12 4.5Z" clip-rule="evenodd" />
+                    </svg>
                     Recargar
                 </button>
             </div>
@@ -97,19 +102,15 @@
                     </div>
                 </div>
 
-                <p class="text-muted" style="font-size:12px">
-                    Usa los selectores de arriba para aplicar tu horario a los dias que necesites y luego guarda.
-                </p>
+                <div v-if="scheduleError" class="alert alert-error mt-4">{{ scheduleError }}</div>
+                <div v-if="scheduleSuccess" class="alert alert-success mt-4">{{ scheduleSuccess }}</div>
+
+                <div class="flex gap-2 mt-4">
+                    <button class="btn btn-primary" :disabled="scheduleSaving || scheduleLoading" @click="saveWorkSchedule">
+                        {{ scheduleSaving ? 'Guardando...' : 'Guardar horario' }}
+                    </button>
+                </div>
             </template>
-
-            <div v-if="scheduleError" class="alert alert-error mt-4">{{ scheduleError }}</div>
-            <div v-if="scheduleSuccess" class="alert alert-success mt-4">{{ scheduleSuccess }}</div>
-
-            <div class="flex gap-2 mt-4">
-                <button class="btn btn-primary" :disabled="scheduleSaving || scheduleLoading" @click="saveWorkSchedule">
-                    {{ scheduleSaving ? 'Guardando...' : 'Guardar horario' }}
-                </button>
-            </div>
         </div>
 
         <!-- Calendario semanal -->
@@ -138,25 +139,38 @@
                 <div class="tasks-list">
                     <div v-if="day.tasks.length === 0" class="empty-day">Sin tareas</div>
 
-                    <div v-for="task in day.tasks" :key="task.id" class="task-card" :class="'task-' + task.status">
+                    <div v-for="task in day.tasks" :key="task.id" 
+                         class="task-card" 
+                         :class="['task-' + task.status, getTaskWarningClass(task)]"
+                         :title="getTaskWarningTitle(task)">
+                        
                         <p class="task-time">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="11"
-                                height="11">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="11" height="11">
                                 <path fill-rule="evenodd"
                                     d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z"
                                     clip-rule="evenodd" />
                             </svg>
                             {{ task.start_time }} - {{ task.end_time }}
-                            <span v-if="task.is_recurring" title="Tarea recurrente">🔁</span>
+                            
+                            <!-- Icono tarea recurrente (sin emoji) -->
+                            <svg v-if="task.is_recurring" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="10" height="10" style="display:inline; margin-left:4px" title="Tarea recurrente">
+                                <path fill-rule="evenodd" d="M4.755 10.059a7.5 7.5 0 0 1 12.548-3.364l1.903 1.903h-3.183a.75.75 0 1 0 0 1.5h4.992a.75.75 0 0 0 .75-.75V4.356a.75.75 0 0 0-1.5 0v3.18l-1.9-1.9A9 9 0 0 0 3.306 9.67a.75.75 0 1 0 1.45.388Zm15.408 3.352a.75.75 0 0 0-.919.53 7.5 7.5 0 0 1-12.548 3.364l-1.902-1.903h3.183a.75.75 0 0 0 0-1.5H4.005a.75.75 0 0 0-.75.75v4.992a.75.75 0 0 0 1.5 0v-3.18l1.9 1.9a9 9 0 0 0 15.059-4.035.75.75 0 0 0-.53-.918Z" clip-rule="evenodd" />
+                            </svg>
+                            
+                            <!-- Icono fuera de horario (advertencia) -->
+                            <svg v-if="!isTaskWithinWorkHours(task) && task.status !== 'completed'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="12" height="12" style="display:inline; margin-left:4px; color:#f97316" title="Fuera del horario laboral">
+                                <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.155 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.754-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" />
+                            </svg>
                         </p>
 
                         <p class="task-title">{{ task.title }}</p>
 
                         <span v-if="task.schedule" class="schedule-badge">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="9" height="9">
-                            <path fill-rule="evenodd" d="M1.5 5.625c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v12.75c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 18.375V5.625Z" clip-rule="evenodd" />
-                        </svg>
-                        {{ task.schedule.title }}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="9" height="9">
+                                <path fill-rule="evenodd" d="M1.5 5.625c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v12.75c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 18.375V5.625Z" clip-rule="evenodd" />
+                                <path d="M12 13.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" />
+                            </svg>
+                            {{ task.schedule.title }}
                         </span>
 
                         <p v-if="task.description" class="task-desc">{{ task.description }}</p>
@@ -171,23 +185,40 @@
 
                             <div class="task-actions">
                                 <button class="icon-btn" title="Editar" @click="openForm(day.date, task)">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                        width="13" height="13">
-                                        <path
-                                            d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
+                                        <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
                                     </svg>
                                 </button>
                                 <button class="icon-btn danger" title="Eliminar" @click="deleteTask(task)">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                        width="13" height="13">
-                                        <path fill-rule="evenodd"
-                                            d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z"
-                                            clip-rule="evenodd" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
+                                        <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
                                     </svg>
                                 </button>
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Mostrar horario laboral del día -->
+                <div class="work-hours-info" :class="{ 
+                    'working-day': getWorkScheduleForDay(day.date)?.is_working,
+                    'non-working-day': !getWorkScheduleForDay(day.date)?.is_working 
+                }">
+                    <template v-if="getWorkScheduleForDay(day.date)?.is_working">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="10" height="10" style="margin-right:4px">
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+                        </svg>
+                        {{ getWorkScheduleForDay(day.date)?.start_time }} - {{ getWorkScheduleForDay(day.date)?.end_time }}
+                        <span v-if="getWorkScheduleForDay(day.date)?.break_minutes > 0">
+                            (Descanso: {{ getWorkScheduleForDay(day.date)?.break_minutes }} min)
+                        </span>
+                    </template>
+                    <template v-else>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="10" height="10" style="margin-right:4px">
+                            <path fill-rule="evenodd" d="M4.5 7.5a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clip-rule="evenodd" />
+                        </svg>
+                        Día no laboral
+                    </template>
                 </div>
             </div>
         </div>
@@ -291,6 +322,11 @@ const {
     fetchTasks, saveTask, changeStatus,
     deleteTask, changeWeek, openForm, closeForm,
     fetchWorkSchedule, saveWorkSchedule,
+
+    getWorkScheduleForDay: getWorkScheduleFromComposable,
+    isTaskWithinWorkHours: isTaskWithinWorkHoursFromComposable,
+    getTaskWarningClass: getTaskWarningClassFromComposable,
+    getTaskWarningTitle: getTaskWarningTitleFromComposable,
 } = usePlanificacion()
 
 const selectedScheduleDays = ref([0, 1, 2, 3, 4])
@@ -298,6 +334,68 @@ const batchWorking = ref(true)
 const batchStartTime = ref('08:00')
 const batchEndTime = ref('17:00')
 const batchBreakMinutes = ref(60)
+
+function getWorkScheduleForDay(dateStr) {
+    if (!dateStr || !scheduleDays.value.length) return null
+    
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    const jsDayOfWeek = date.getDay() 
+    
+    let scheduleIndex
+    if (jsDayOfWeek === 0) {
+        scheduleIndex = 6 
+    } else {
+        scheduleIndex = jsDayOfWeek - 1 
+    }
+    
+    const result = scheduleDays.value.find(d => d.day_of_week === scheduleIndex)
+    return result
+}
+
+function isTaskWithinWorkHours(task) {
+    if (task.status === 'completed') return true
+    
+    const schedule = getWorkScheduleForDay(task.date)
+    if (!schedule || !schedule.is_working) return false
+    
+    const taskStart = task.start_time
+    const taskEnd = task.end_time
+    const workStart = schedule.start_time
+    const workEnd = schedule.end_time
+    
+    return taskStart >= workStart && taskEnd <= workEnd
+}
+
+
+function getTaskWarningClass(task) {
+    if (task.status === 'completed') return ''
+    if (!isTaskWithinWorkHours(task)) return 'task-warning'
+    return ''
+}
+
+function getTaskWarningTitle(task) {
+    if (task.status === 'completed') return ''
+    if (!isTaskWithinWorkHours(task)) {
+        const schedule = getWorkScheduleForDay(task.date)
+        if (schedule && schedule.is_working) {
+            return `Fuera del horario laboral (${schedule.start_time} - ${schedule.end_time})`
+        }
+        return 'Día no laboral'
+    }
+    return ''
+}
+
+function debugScheduleMapping() {
+    console.log('=== DEBUG MAPEO DE HORARIO ===')
+    console.log('Días de la semana actual:', weekDays.value.map(d => d.name))
+    console.log('Horario desde backend:', scheduleDays.value)
+    
+    weekDays.value.forEach(day => {
+        const schedule = getWorkScheduleForDay(day.date)
+        console.log(`${day.name} (${day.date}):`, schedule?.is_working !== undefined ? schedule : 'No encontrado')
+    })
+}
 
 function toggleScheduleDay(day) {
     if (selectedScheduleDays.value.includes(day)) {
@@ -325,7 +423,7 @@ function applyBatchSchedule() {
         return
     }
 
-    scheduleDays.forEach(day => {
+    scheduleDays.value.forEach(day => {
         if (!selectedScheduleDays.value.includes(day.day_of_week)) return
 
         day.is_working = batchWorking.value
@@ -344,5 +442,6 @@ function applyBatchSchedule() {
 onMounted(() => {
     fetchTasks()
     fetchWorkSchedule()
+    setTimeout(debugScheduleMapping, 1500)
 })
 </script>

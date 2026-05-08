@@ -77,7 +77,7 @@ class WorkScheduleController extends Controller
 
                 $startTime = Carbon::createFromFormat('H:i', $start);
                 $endTime = Carbon::createFromFormat('H:i', $end);
-                $minutes = $endTime->diffInMinutes($startTime, false);
+                $minutes = $startTime->diffInMinutes($endTime, false);
 
                 if ($minutes <= 0) {
                     $errors["days.$day"] = 'La hora fin debe ser mayor a la hora inicio.';

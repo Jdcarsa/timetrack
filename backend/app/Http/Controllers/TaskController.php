@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Models\UserWorkSchedule;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -16,37 +17,27 @@ class TaskController extends Controller
     {
         $user = $request->user();
 
-        // Si no mandan semana, usamos la semana actual
-        // Carbon::parse()->startOfWeek() da el lunes de esa semana
         $weekStart = $request->filled('week')
             ? Carbon::parse($request->week)->startOfWeek(Carbon::MONDAY)
             : Carbon::now()->startOfWeek(Carbon::MONDAY);
 
         $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
 
-        // 1. Tareas normales (no recurrentes) en ese rango de fechas
         $normalTasks = Task::where('user_id', $user->id)
             ->where('is_recurring', false)
             ->whereBetween('date', [$weekStart, $weekEnd])
             ->get();
 
-        // 2. Tareas recurrentes del empleado
-        // Las generamos virtualmente para cada día de la semana
         $recurringTasks = Task::where('user_id', $user->id)
             ->where('is_recurring', true)
             ->get()
             ->map(function ($task) use ($weekStart) {
-                // Calculamos la fecha real de esta semana para ese día
-                // recur_day: 0=lunes, 1=martes, etc.
                 $taskDate = $weekStart->copy()->addDays($task->recur_day);
-
-                // Clonamos la tarea con la fecha de esta semana
                 $task = $task->replicate();
                 $task->date = $taskDate;
                 return $task;
             });
 
-        // 3. Unimos ambas colecciones y ordenamos por fecha y hora
         $tasks = $normalTasks
             ->concat($recurringTasks)
             ->sortBy(fn($t) => $t->date->format('Y-m-d') . $t->start_time)
@@ -61,7 +52,7 @@ class TaskController extends Controller
 
     // ─────────────────────────────────────────
     // POST /api/tasks
-    // Crea una nueva tarea
+    // Crea una nueva tarea con validación de horario
     // ─────────────────────────────────────────
     public function store(Request $request)
     {
@@ -82,8 +73,23 @@ class TaskController extends Controller
             : $request->user()->id;
     
         $date = $request->is_recurring
-            ? \Carbon\Carbon::now()->startOfWeek()->addDays($request->recur_day)
-            : \Carbon\Carbon::parse($request->date);
+            ? Carbon::now()->startOfWeek()->addDays($request->recur_day)
+            : Carbon::parse($request->date);
+    
+        // ✅ VALIDACIÓN DE HORARIO LABORAL
+        $validationError = $this->validateWorkingHours(
+            $assignedUserId, 
+            $date, 
+            $request->start_time, 
+            $request->end_time
+        );
+        
+        if ($validationError) {
+            return response()->json([
+                'message' => $validationError['message'],
+                'errors' => $validationError['errors']
+            ], 422);
+        }
     
         $task = Task::create([
             'user_id'      => $assignedUserId,
@@ -111,7 +117,7 @@ class TaskController extends Controller
 
     // ─────────────────────────────────────────
     // PUT /api/tasks/{task}
-    // Edita una tarea existente
+    // Edita una tarea existente con validación de horario
     // ─────────────────────────────────────────
     public function update(Request $request, Task $task)
     {
@@ -125,10 +131,53 @@ class TaskController extends Controller
             'description'  => 'nullable|string',
             'date'         => 'sometimes|date',
             'start_time'   => 'sometimes|date_format:H:i',
-            'end_time'     => 'sometimes|date_format:H:i',
+            'end_time'     => 'sometimes|date_format:H:i|after:start_time',
             'is_recurring' => 'sometimes|boolean',
             'recur_day'    => 'nullable|integer|min:0|max:6',
         ]);
+
+        // Preparar datos para validación
+        $date = $request->has('date') 
+            ? Carbon::parse($request->date) 
+            : $task->date;
+            
+        $startTime = $request->has('start_time') 
+            ? $request->start_time 
+            : $task->start_time;
+            
+        $endTime = $request->has('end_time') 
+            ? $request->end_time 
+            : $task->end_time;
+            
+        $isRecurring = $request->has('is_recurring') 
+            ? $request->boolean('is_recurring') 
+            : $task->is_recurring;
+            
+        $recurDay = $request->has('recur_day') 
+            ? $request->recur_day 
+            : $task->recur_day;
+            
+        // Para tareas recurrentes, recalcular fecha
+        if ($isRecurring && $request->has('recur_day')) {
+            $date = Carbon::now()->startOfWeek()->addDays($recurDay);
+        }
+        
+        // ✅ VALIDACIÓN DE HORARIO LABORAL (solo si cambian fecha u hora)
+        if ($request->has('date') || $request->has('start_time') || $request->has('end_time') || $request->has('recur_day')) {
+            $validationError = $this->validateWorkingHours(
+                $task->user_id,
+                $date,
+                $startTime,
+                $endTime
+            );
+            
+            if ($validationError) {
+                return response()->json([
+                    'message' => $validationError['message'],
+                    'errors' => $validationError['errors']
+                ], 422);
+            }
+        }
 
         $task->update($request->only([
             'title', 'description', 'date',
@@ -190,13 +239,11 @@ class TaskController extends Controller
 
         $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
 
-        // Tareas normales de todos los empleados esa semana
         $normalTasks = Task::with('user:id,name,email')
             ->where('is_recurring', false)
             ->whereBetween('date', [$weekStart, $weekEnd])
             ->get();
 
-        // Tareas recurrentes de todos los empleados
         $recurringTasks = Task::with('user:id,name,email')
             ->where('is_recurring', true)
             ->get()
@@ -212,7 +259,6 @@ class TaskController extends Controller
             ->sortBy(fn($t) => $t->date->format('Y-m-d') . $t->start_time)
             ->values();
 
-        // Agrupamos por fecha para que Vue pueda pintar el calendario fácilmente
         $grouped = $allTasks->groupBy(fn($t) => $t->date->format('Y-m-d'))
             ->map(fn($dayTasks) => $dayTasks->map(fn($t) => $this->formatTask($t, true)));
 
@@ -221,6 +267,77 @@ class TaskController extends Controller
             'week_end'   => $weekEnd->format('Y-m-d'),
             'days'       => $grouped,
         ]);
+    }
+
+    // ─────────────────────────────────────────
+    // Helper: Valida que la tarea esté dentro del horario laboral
+    // ─────────────────────────────────────────
+    private function validateWorkingHours(int $userId, Carbon $date, string $startTime, string $endTime): ?array
+    {
+        // Obtener día de la semana (0=lunes, 6=domingo)
+        $dayOfWeek = $date->dayOfWeek; // Carbon: 0=domingo, 1=lunes, ..., 6=sábado
+        // Convertir a nuestro formato (0=lunes, 6=domingo)
+        $dayOfWeekIndex = $dayOfWeek == 0 ? 6 : $dayOfWeek - 1;
+        
+        // Obtener horario del usuario para ese día
+        $workSchedule = UserWorkSchedule::where('user_id', $userId)
+            ->where('day_of_week', $dayOfWeekIndex)
+            ->first();
+        
+        // Verificar si es día laboral
+        if (!$workSchedule || !$workSchedule->is_working) {
+            $dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            return [
+                'message' => 'No puedes programar tareas en un día no laboral.',
+                'errors' => ['date' => ["El {$dayNames[$dayOfWeekIndex]} no es laboral para este empleado."]]
+            ];
+        }
+        
+        // Validar que la tarea esté dentro del horario laboral
+        $start = Carbon::parse($startTime);
+        $end = Carbon::parse($endTime);
+        $workStart = Carbon::parse($workSchedule->start_time);
+        $workEnd = Carbon::parse($workSchedule->end_time);
+        
+        // Restar el tiempo de descanso del horario laboral
+        $breakMinutes = $workSchedule->break_minutes ?? 0;
+        $workEndWithBreak = $workEnd->copy()->subMinutes($breakMinutes);
+        
+        if ($start->lt($workStart)) {
+            return [
+                'message' => 'La tarea comienza antes del horario laboral.',
+                'errors' => ['start_time' => ["El horario laboral comienza a las {$workSchedule->start_time}"]]
+            ];
+        }
+        
+        if ($end->gt($workEndWithBreak)) {
+            return [
+                'message' => 'La tarea termina después del horario laboral.',
+                'errors' => ['end_time' => ["El horario laboral termina a las {$workEndWithBreak->format('H:i')} (incluyendo {$breakMinutes} min de descanso)"]]
+            ];
+        }
+        
+        // Validar que no se solape con otra tarea existente
+        $existingTask = Task::where('user_id', $userId)
+            ->where('date', $date->format('Y-m-d'))
+            ->where(function($query) use ($startTime, $endTime) {
+                $query->whereBetween('start_time', [$startTime, $endTime])
+                      ->orWhereBetween('end_time', [$startTime, $endTime])
+                      ->orWhere(function($q) use ($startTime, $endTime) {
+                          $q->where('start_time', '<=', $startTime)
+                            ->where('end_time', '>=', $endTime);
+                      });
+            })
+            ->exists();
+        
+        if ($existingTask) {
+            return [
+                'message' => 'Ya existe una tarea programada en ese horario.',
+                'errors' => ['time' => ['Ya hay una tarea en ese horario.']]
+            ];
+        }
+        
+        return null; // No hay error
     }
 
     // ─────────────────────────────────────────

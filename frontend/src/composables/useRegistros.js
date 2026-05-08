@@ -151,6 +151,39 @@ export function useRegistros() {
         fetchRecords(1)
     }
     
+    // Exportar a CSV (opcional)
+    const exportToCSV = () => {
+        if (records.value.length === 0) return
+        
+        const headers = ['Empleado', 'Fecha', 'Entrada', 'Salida', 'Horas', 'Tarifa/h', 'Total', 'Estado']
+        const csvRows = [headers]
+        
+        records.value.forEach(record => {
+            const row = [
+                record.user?.name || '—',
+                formatDate(record.clock_in),
+                formatTime(record.clock_in),
+                record.clock_out ? formatTime(record.clock_out) : '—',
+                record.total_hours > 0 ? formatHours(record.total_hours) : '—',
+                `$${formatMoney(record.hourly_rate_snapshot)}`,
+                record.clock_out && record.total_hours > 0 ? `$${formatMoney(record.total_hours * record.hourly_rate_snapshot)}` : '—',
+                record.clock_out ? 'Completo' : 'Activo'
+            ]
+            csvRows.push(row)
+        })
+        
+        const csvContent = csvRows.map(row => row.join(',')).join('\n')
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', `registros_${new Date().toISOString().split('T')[0]}.csv`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+    }
 
     return {
         // Estado
