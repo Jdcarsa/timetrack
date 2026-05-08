@@ -55,6 +55,7 @@ const router   = useRouter()
 const auth     = useAuthStore()
 const email    = ref('')
 const password = ref('')
+const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const loading  = ref(false)
 const error    = ref('')
 
@@ -63,7 +64,7 @@ async function handleLogin() {
   if (!email.value || !password.value) { error.value = 'Por favor completa todos los campos.'; return }
   loading.value = true
   try {
-    await auth.login(email.value, password.value)
+    await auth.login(email.value, password.value, userTimeZone)
     router.push('/')
   } catch (e) {
     error.value = e.response?.data?.message || 'Credenciales incorrectas.'

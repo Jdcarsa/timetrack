@@ -15,6 +15,7 @@ class AuthController extends Controller
         $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string',
+            'timezone' => 'required|string',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -23,6 +24,11 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales no son correctas.'],
             ]);
+        }
+
+        if ($request->filled('timezone')) {
+            $user->timezone = $request->timezone;
+            $user->save();
         }
 
         // Elimina tokens anteriores y crea uno nuevo
@@ -36,6 +42,7 @@ class AuthController extends Controller
                 'email'       => $user->email,
                 'role'        => $user->role,
                 'hourly_rate' => $user->hourly_rate,
+                'timezone'    => $user->timezone ?? 'UTC',
             ],
             'token' => $token,
         ]);

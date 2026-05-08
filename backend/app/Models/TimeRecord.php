@@ -39,4 +39,16 @@ class TimeRecord extends Model
         $m = round(($this->total_hours - $h) * 60);
         return "{$h}h {$m}m";
     }
+    
+    // ✅ Nuevo: Obtener clock_in en la zona horaria del usuario
+    public function getClockInInTimezone($timezone)
+    {
+        return $this->clock_in->timezone($timezone);
+    }
+    
+    // ✅ Nuevo: Obtener clock_out en la zona horaria del usuario
+    public function getClockOutInTimezone($timezone)
+    {
+        return $this->clock_out?->timezone($timezone);
+    }
 }
