@@ -106,7 +106,7 @@
                 <div v-if="scheduleSuccess" class="alert alert-success mt-4">{{ scheduleSuccess }}</div>
 
                 <div class="flex gap-2 mt-4">
-                    <button class="btn btn-primary" :disabled="scheduleSaving || scheduleLoading" @click="saveWorkSchedule">
+                    <button class="btn btn-primary" :disabled="scheduleSaving || scheduleLoading" @click="handleSaveWorkSchedule">
                         {{ scheduleSaving ? 'Guardando...' : 'Guardar horario' }}
                     </button>
                 </div>
@@ -386,17 +386,6 @@ function getTaskWarningTitle(task) {
     return ''
 }
 
-function debugScheduleMapping() {
-    console.log('=== DEBUG MAPEO DE HORARIO ===')
-    console.log('Días de la semana actual:', weekDays.value.map(d => d.name))
-    console.log('Horario desde backend:', scheduleDays.value)
-    
-    weekDays.value.forEach(day => {
-        const schedule = getWorkScheduleForDay(day.date)
-        console.log(`${day.name} (${day.date}):`, schedule?.is_working !== undefined ? schedule : 'No encontrado')
-    })
-}
-
 function toggleScheduleDay(day) {
     if (selectedScheduleDays.value.includes(day)) {
         selectedScheduleDays.value = selectedScheduleDays.value.filter(d => d !== day)
@@ -417,31 +406,47 @@ function clearSelectedDays() {
     selectedScheduleDays.value = []
 }
 
+async function handleSaveWorkSchedule() {
+    if (import.meta.env.DEV) {
+        console.debug('handleSaveWorkSchedule current scheduleDays', JSON.parse(JSON.stringify(scheduleDays.value)))
+    }
+
+    await saveWorkSchedule()
+}
+
 function applyBatchSchedule() {
     if (selectedScheduleDays.value.length === 0) {
         alert('Selecciona al menos un dia para aplicar cambios.')
         return
     }
 
-    scheduleDays.value.forEach(day => {
-        if (!selectedScheduleDays.value.includes(day.day_of_week)) return
+    scheduleDays.value = scheduleDays.value.map(day => {
+        if (!selectedScheduleDays.value.includes(day.day_of_week)) {
+            return {
+                ...day,
+                is_working: false,
+                start_time: null,
+                end_time: null,
+                break_minutes: 0,
+            }
+        }
 
-        day.is_working = batchWorking.value
-        if (batchWorking.value) {
-            day.start_time = batchStartTime.value
-            day.end_time = batchEndTime.value
-            day.break_minutes = Number(batchBreakMinutes.value || 0)
-        } else {
-            day.start_time = null
-            day.end_time = null
-            day.break_minutes = 0
+        return {
+            ...day,
+            is_working: batchWorking.value,
+            start_time: batchWorking.value ? batchStartTime.value : null,
+            end_time: batchWorking.value ? batchEndTime.value : null,
+            break_minutes: batchWorking.value ? Number(batchBreakMinutes.value || 0) : 0,
         }
     })
+
+    if (import.meta.env.DEV) {
+        console.debug('applyBatchSchedule result', JSON.parse(JSON.stringify(scheduleDays.value)))
+    }
 }
 
 onMounted(() => {
     fetchTasks()
     fetchWorkSchedule()
-    setTimeout(debugScheduleMapping, 1500)
 })
 </script>

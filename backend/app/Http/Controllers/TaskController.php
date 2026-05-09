@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use App\Models\UserWorkSchedule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class TaskController extends Controller
@@ -32,10 +33,12 @@ class TaskController extends Controller
             ->where('is_recurring', true)
             ->get()
             ->map(function ($task) use ($weekStart) {
+                $originalId = $task->getKey();
                 $taskDate = $weekStart->copy()->addDays($task->recur_day);
-                $task = $task->replicate();
-                $task->date = $taskDate;
-                return $task;
+                $taskCopy = $task->replicate();
+                $taskCopy->id = $originalId;
+                $taskCopy->date = $taskDate;
+                return $taskCopy;
             });
 
         $tasks = $normalTasks
@@ -81,7 +84,8 @@ class TaskController extends Controller
             $assignedUserId, 
             $date, 
             $request->start_time, 
-            $request->end_time
+            $request->end_time,
+            null
         );
         
         if ($validationError) {
@@ -121,8 +125,25 @@ class TaskController extends Controller
     // ─────────────────────────────────────────
     public function update(Request $request, Task $task)
     {
+        $updatableFields = [
+            'title', 'description', 'date',
+            'start_time', 'end_time', 'is_recurring', 'recur_day'
+        ];
+
+        Log::info('tasks.update.request', [
+            'task_id' => $task->id,
+            'user_id' => $request->user()->id,
+            'owner_id' => $task->user_id,
+            'payload' => $request->only($updatableFields),
+        ]);
+
         // Solo el dueño puede editar su tarea
         if ($task->user_id !== $request->user()->id) {
+            Log::warning('tasks.update.unauthorized', [
+                'task_id' => $task->id,
+                'user_id' => $request->user()->id,
+                'owner_id' => $task->user_id,
+            ]);
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 
@@ -160,6 +181,7 @@ class TaskController extends Controller
         // Para tareas recurrentes, recalcular fecha
         if ($isRecurring && $request->has('recur_day')) {
             $date = Carbon::now()->startOfWeek()->addDays($recurDay);
+            $request->merge(['date' => $date->format('Y-m-d')]);
         }
         
         // ✅ VALIDACIÓN DE HORARIO LABORAL (solo si cambian fecha u hora)
@@ -168,10 +190,16 @@ class TaskController extends Controller
                 $task->user_id,
                 $date,
                 $startTime,
-                $endTime
+                $endTime,
+                $task->id
             );
             
             if ($validationError) {
+                Log::warning('tasks.update.validation_error', [
+                    'task_id' => $task->id,
+                    'user_id' => $task->user_id,
+                    'validation' => $validationError,
+                ]);
                 return response()->json([
                     'message' => $validationError['message'],
                     'errors' => $validationError['errors']
@@ -179,14 +207,28 @@ class TaskController extends Controller
             }
         }
 
-        $task->update($request->only([
-            'title', 'description', 'date',
-            'start_time', 'end_time', 'is_recurring', 'recur_day'
-        ]));
+        $task->fill($request->only($updatableFields));
+        $dirty = $task->getDirty();
+
+        Log::info('tasks.update.dirty', [
+            'task_id' => $task->id,
+            'dirty' => $dirty,
+        ]);
+
+        $task->save();
+        $changes = $task->getChanges();
+        $task->refresh();
+
+        Log::info('tasks.update.saved', [
+            'task_id' => $task->id,
+            'was_changed' => $task->wasChanged(),
+            'changes' => $changes,
+            'current' => $task->only($updatableFields),
+        ]);
 
         return response()->json([
             'message' => 'Tarea actualizada.',
-            'task'    => $this->formatTask($task->fresh()),
+            'task'    => $this->formatTask($task),
         ]);
     }
 
@@ -248,11 +290,12 @@ class TaskController extends Controller
             ->where('is_recurring', true)
             ->get()
             ->map(function ($task) use ($weekStart) {
+                $originalId = $task->getKey();
                 $taskDate    = $weekStart->copy()->addDays($task->recur_day);
-                $task        = $task->replicate(['id']);
-                $task->id    = $task->getKey();
-                $task->date  = $taskDate;
-                return $task;
+                $taskCopy    = $task->replicate();
+                $taskCopy->id   = $originalId;
+                $taskCopy->date = $taskDate;
+                return $taskCopy;
             });
 
         $allTasks = $normalTasks->concat($recurringTasks)
@@ -272,7 +315,7 @@ class TaskController extends Controller
     // ─────────────────────────────────────────
     // Helper: Valida que la tarea esté dentro del horario laboral
     // ─────────────────────────────────────────
-    private function validateWorkingHours(int $userId, Carbon $date, string $startTime, string $endTime): ?array
+    private function validateWorkingHours(int $userId, Carbon $date, string $startTime, string $endTime, ?int $ignoreTaskId = null): ?array
     {
         // Obtener día de la semana (0=lunes, 6=domingo)
         $dayOfWeek = $date->dayOfWeek; // Carbon: 0=domingo, 1=lunes, ..., 6=sábado
@@ -320,13 +363,10 @@ class TaskController extends Controller
         // Validar que no se solape con otra tarea existente
         $existingTask = Task::where('user_id', $userId)
             ->where('date', $date->format('Y-m-d'))
+            ->when($ignoreTaskId, fn($q) => $q->where('id', '!=', $ignoreTaskId))
             ->where(function($query) use ($startTime, $endTime) {
-                $query->whereBetween('start_time', [$startTime, $endTime])
-                      ->orWhereBetween('end_time', [$startTime, $endTime])
-                      ->orWhere(function($q) use ($startTime, $endTime) {
-                          $q->where('start_time', '<=', $startTime)
-                            ->where('end_time', '>=', $endTime);
-                      });
+                $query->where('start_time', '<', $endTime)
+                      ->where('end_time', '>', $startTime);
             })
             ->exists();
         

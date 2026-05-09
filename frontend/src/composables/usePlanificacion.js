@@ -158,6 +158,10 @@ export function usePlanificacion() {
                 })),
             }
 
+            if (import.meta.env.DEV) {
+                console.debug('saveWorkSchedule payload', JSON.parse(JSON.stringify(payload)))
+            }
+
             const { data } = await api.put('/work-schedule', payload)
             scheduleDays.value = data.days.map(d => ({
                 ...d,

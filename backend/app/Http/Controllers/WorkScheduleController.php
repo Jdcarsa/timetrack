@@ -7,6 +7,7 @@ use App\Support\WorkScheduleHelper;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class WorkScheduleController extends Controller
@@ -14,6 +15,10 @@ class WorkScheduleController extends Controller
     // GET /api/work-schedule
     public function show(Request $request)
     {
+        Log::info('work_schedule.show.request', [
+            'user_id' => $request->user()->id,
+        ]);
+
         if (!Schema::hasTable('user_work_schedules')) {
             return response()->json([
                 'user_id' => $request->user()->id,
@@ -27,6 +32,11 @@ class WorkScheduleController extends Controller
         $user->load('workSchedules');
         $days = WorkScheduleHelper::normalizeForResponse($user->workSchedules);
 
+        Log::info('work_schedule.show.response', [
+            'user_id' => $user->id,
+            'days' => $days,
+        ]);
+
         return response()->json([
             'user_id' => $user->id,
             'days' => $days,
@@ -36,11 +46,11 @@ class WorkScheduleController extends Controller
     // PUT /api/work-schedule
     public function update(Request $request)
     {
-        if (!Schema::hasTable('user_work_schedules')) {
-            return response()->json([
-                'message' => 'La tabla de horarios no existe aun. Ejecuta migraciones del backend.',
-            ], 409);
-        }
+        Log::info('work_schedule.update.request', [
+            'user_id' => $request->user()->id,
+            'days_count' => is_array($request->input('days')) ? count($request->input('days')) : null,
+            'days' => $request->input('days'),
+        ]);
 
         $request->validate([
             'days' => 'required|array|size:7',
@@ -107,19 +117,29 @@ class WorkScheduleController extends Controller
         }
 
         if (!empty($errors)) {
+            Log::warning('work_schedule.update.validation_error', [
+                'user_id' => $request->user()->id,
+                'errors' => $errors,
+            ]);
             return response()->json([
                 'message' => 'Revisa los datos del horario.',
                 'errors' => $errors,
             ], 422);
         }
 
-        DB::transaction(function () use ($rows) {
-            UserWorkSchedule::upsert(
+        $upsertResult = DB::transaction(function () use ($rows) {
+            return UserWorkSchedule::upsert(
                 $rows,
                 ['user_id', 'day_of_week'],
                 ['is_working', 'start_time', 'end_time', 'break_minutes', 'updated_at']
             );
         });
+
+        Log::info('work_schedule.update.saved', [
+            'user_id' => $request->user()->id,
+            'upsert_result' => $upsertResult,
+            'rows' => $rows,
+        ]);
 
         return $this->show($request);
     }
