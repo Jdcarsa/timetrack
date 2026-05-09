@@ -14,8 +14,14 @@ const api = axios.create({
 // Inyecta el token en cada request si existe
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
+  const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+
+  if (browserTimezone) {
+    config.headers['X-Timezone'] = browserTimezone
   }
   
   return config

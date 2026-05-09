@@ -55,6 +55,13 @@ export function useCalendario() {
         }[status] ?? 'badge badge-gray'
     }
 
+    function toMinutes(time) {
+        if (!time || typeof time !== 'string' || !time.includes(':')) return null
+        const [h, m] = time.split(':').map(Number)
+        if (Number.isNaN(h) || Number.isNaN(m)) return null
+        return (h * 60) + m
+    }
+
     // ── Computed ──────────────────────────────────────────────────
     const weekLabel = computed(() => {
         const start = currentWeekStart.value
@@ -131,6 +138,50 @@ export function useCalendario() {
         return [...map.values()]
     })
 
+    const employeeSchedules = computed(() => {
+        const dayShort = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+        return employees.value
+            .filter(emp => !filterUserId.value || emp.id == filterUserId.value)
+            .map(emp => {
+                const byDay = new Map((emp.work_schedule || []).map(day => [Number(day.day_of_week), day]))
+                let totalMinutes = 0
+
+                const days = Array.from({ length: 7 }, (_, idx) => {
+                    const day = byDay.get(idx)
+                    const isWorking = !!day?.is_working
+                    const startTime = day?.start_time ? String(day.start_time).slice(0, 5) : null
+                    const endTime = day?.end_time ? String(day.end_time).slice(0, 5) : null
+                    const breakMinutes = Number(day?.break_minutes ?? 0)
+
+                    if (isWorking && startTime && endTime) {
+                        const start = toMinutes(startTime)
+                        const end = toMinutes(endTime)
+                        if (start !== null && end !== null && end > start) {
+                            totalMinutes += Math.max(0, (end - start) - breakMinutes)
+                        }
+                    }
+
+                    return {
+                        day_of_week: idx,
+                        short: dayShort[idx],
+                        is_working: isWorking,
+                        start_time: isWorking ? startTime : null,
+                        end_time: isWorking ? endTime : null,
+                    }
+                })
+
+                return {
+                    id: emp.id,
+                    name: emp.name,
+                    color: getEmployeeColor(emp.id),
+                    total_hours: Math.round((totalMinutes / 60) * 10) / 10,
+                    days,
+                }
+            })
+            .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    })
+
     // ── API ───────────────────────────────────────────────────────
     async function fetchCalendar() {
         loading.value = true
@@ -164,7 +215,7 @@ export function useCalendario() {
         calendarDays, employees, loading, filterUserId,
         // Computed
         weekLabel, isCurrentWeek, weekDays,
-        visibleEmployees, summaryRows,
+        visibleEmployees, summaryRows, employeeSchedules,
         // Helpers
         getEmployeeColor, statusBadge,
         // Métodos

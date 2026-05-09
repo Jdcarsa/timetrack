@@ -60,12 +60,25 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = $request->user();
+
+        $timezone = $request->header('X-Timezone');
+        if ($timezone && $timezone !== $user->timezone) {
+            try {
+                new \DateTimeZone($timezone);
+                $user->timezone = $timezone;
+                $user->save();
+            } catch (\Exception $e) {
+                // Ignorar zona inválida
+            }
+        }
+
         return response()->json([
             'id'          => $user->id,
             'name'        => $user->name,
             'email'       => $user->email,
             'role'        => $user->role,
             'hourly_rate' => $user->hourly_rate,
+            'timezone'    => $user->timezone ?? 'UTC',
         ]);
     }
 }

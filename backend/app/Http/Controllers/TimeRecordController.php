@@ -12,6 +12,7 @@ class TimeRecordController extends Controller
     public function clockIn(Request $request)
     {
         $user = $request->user();
+        $userTimezone = $this->resolveTimezone($request, $user);
 
         // Verifica que no tenga una sesion abierta sin cerrar
         $open = TimeRecord::where('user_id', $user->id)
@@ -32,9 +33,6 @@ class TimeRecordController extends Controller
             'hourly_rate_snapshot' => $user->hourly_rate,
         ]);
 
-        // Obtener zona horaria del usuario para la respuesta
-        $userTimezone = $user->timezone ?? 'UTC';
-
         return response()->json([
             'message' => 'Entrada registrada correctamente.',
             'record'  => [
@@ -49,6 +47,7 @@ class TimeRecordController extends Controller
     public function clockOut(Request $request)
     {
         $user = $request->user();
+        $userTimezone = $this->resolveTimezone($request, $user);
     
         $record = TimeRecord::where('user_id', $user->id)
             ->whereNull('clock_out')
@@ -84,9 +83,6 @@ class TimeRecordController extends Controller
             'total_hours' => round($totalHours, 2),
         ]);
         
-        // Obtener zona horaria del usuario para la respuesta
-        $userTimezone = $user->timezone ?? 'UTC';
-        
         return response()->json([
             'message' => 'Salida registrada correctamente.',
             'record'  => [
@@ -105,7 +101,7 @@ class TimeRecordController extends Controller
     public function myRecords(Request $request)
     {
         $user = $request->user();
-        $userTimezone = $user->timezone ?? 'UTC';
+        $userTimezone = $this->resolveTimezone($request, $user);
         
         $records = TimeRecord::where('user_id', $user->id)
             ->orderBy('clock_in', 'desc')
@@ -133,7 +129,7 @@ class TimeRecordController extends Controller
     public function status(Request $request)
     {
         $user = $request->user();
-        $userTimezone = $user->timezone ?? 'UTC';
+        $userTimezone = $this->resolveTimezone($request, $user);
         
         $open = TimeRecord::where('user_id', $user->id)
             ->whereNull('clock_out')
@@ -148,5 +144,25 @@ class TimeRecordController extends Controller
                 'hourly_rate_snapshot' => $open->hourly_rate_snapshot,
             ] : null,
         ]);
+    }
+
+    private function resolveTimezone(Request $request, $user): string
+    {
+        $candidate = $request->header('X-Timezone')
+            ?? $user->timezone
+            ?? 'UTC';
+
+        try {
+            new \DateTimeZone($candidate);
+
+            if ($user->timezone !== $candidate) {
+                $user->timezone = $candidate;
+                $user->save();
+            }
+
+            return $candidate;
+        } catch (\Exception $e) {
+            return 'UTC';
+        }
     }
 }

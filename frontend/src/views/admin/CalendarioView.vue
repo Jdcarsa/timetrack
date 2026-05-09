@@ -57,6 +57,45 @@
             </div>
         </div>
 
+        <!-- Horarios del equipo -->
+        <div v-if="employeeSchedules.length > 0" class="card mb-4">
+            <h3 class="section-title mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+                    <path fill-rule="evenodd" d="M12 5.25a.75.75 0 0 1 .75.75v5.69l3.22 1.86a.75.75 0 0 1-.75 1.3l-3.6-2.08a.75.75 0 0 1-.37-.65V6a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd" d="M12 2.25a9.75 9.75 0 1 0 9.75 9.75A9.75 9.75 0 0 0 12 2.25Zm-8.25 9.75a8.25 8.25 0 1 1 8.25 8.25A8.25 8.25 0 0 1 3.75 12Z" clip-rule="evenodd" />
+                </svg>
+                Horarios del equipo
+            </h3>
+
+            <div class="team-schedule-grid">
+                <article v-for="emp in employeeSchedules" :key="emp.id" class="team-schedule-card">
+                    <div class="team-schedule-head">
+                        <div class="flex items-center gap-2">
+                            <span class="legend-dot" :style="{ background: emp.color }"></span>
+                            <strong>{{ emp.name }}</strong>
+                        </div>
+                        <span class="badge badge-blue">{{ emp.total_hours }} h/sem</span>
+                    </div>
+
+                    <div class="team-schedule-days">
+                        <div
+                            v-for="day in emp.days"
+                            :key="`${emp.id}-${day.day_of_week}`"
+                            class="team-day-pill"
+                            :class="{ off: !day.is_working }"
+                        >
+                            <span class="team-day-short">{{ day.short }}</span>
+                            <template v-if="day.is_working && day.start_time && day.end_time">
+                                <span class="team-day-time">{{ day.start_time }}</span>
+                                <span class="team-day-time team-day-time--end">{{ day.end_time }}</span>
+                            </template>
+                            <span v-else class="team-day-time">Libre</span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+
         <!-- Calendario -->
         <div v-if="loading" class="card" style="text-align:center; padding:40px">
             <div class="loading-spinner" style="margin:0 auto"></div>
@@ -163,7 +202,7 @@ import '@/assets/calendario.css'
 const {
     employees, loading, filterUserId,
     weekLabel, isCurrentWeek, weekDays,
-    visibleEmployees, summaryRows,
+    visibleEmployees, summaryRows, employeeSchedules,
     getEmployeeColor, statusBadge,
     fetchCalendar, fetchEmployees, changeWeek,
 } = useCalendario()

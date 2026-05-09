@@ -46,6 +46,69 @@
     flex-shrink: 0;
 }
 
+.team-schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 12px;
+}
+
+.team-schedule-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    background: var(--bg);
+}
+
+.team-schedule-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.team-schedule-days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.team-day-pill {
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #312e81;
+    border-radius: 8px;
+    min-height: 44px;
+    padding: 5px 4px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+}
+
+.team-day-pill.off {
+    border-color: #e4e4e7;
+    background: #fafafa;
+    color: #71717a;
+}
+
+.team-day-short {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .05em;
+}
+
+.team-day-time {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.team-day-time--end {
+    opacity: .9;
+}
+
 /* Grid semanal */
 .week-grid {
     display: grid;
@@ -220,5 +283,9 @@
 
     .controls-bar select {
         width: 100% !important;
+    }
+
+    .team-schedule-days {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
