@@ -1,5 +1,6 @@
 FROM php:8.3-cli-alpine
 
+# Dependencias del sistema
 RUN apk add --no-cache \
     git \
     unzip \
@@ -13,6 +14,7 @@ RUN apk add --no-cache \
     libwebp-dev \
     mysql-client
 
+# Configurar e instalar extensiones PHP
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
@@ -26,20 +28,34 @@ RUN docker-php-ext-install \
     intl \
     bcmath
 
+# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-COPY . .
+# Copiar primero composer para mejor cache de layers
+COPY composer.json composer.lock ./
 
 RUN composer install \
     --no-dev \
-    --optimize-autoloader \
-    --no-interaction
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader
 
-RUN php artisan config:clear || true
-RUN php artisan cache:clear || true
+# Copiar resto del proyecto
+COPY . .
+
+# Preparar SQLite para demo
+RUN mkdir -p database \
+    && touch database/database.sqlite
+
+# Limpiar caches Laravel
+RUN php artisan config:clear || true \
+    && php artisan cache:clear || true \
+    && php artisan route:clear || true \
+    && php artisan view:clear || true
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=8080"]
+# Migrar + seed solo al arrancar
+CMD ["sh", "-c", "php artisan migrate --seed --force && php artisan serve --host=0.0.0.0 --port=8080"]
