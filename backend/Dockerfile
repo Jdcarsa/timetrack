@@ -20,6 +20,7 @@ RUN docker-php-ext-configure gd \
     --with-jpeg \
     --with-webp
 
+    
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
@@ -40,7 +41,8 @@ RUN composer install \
     --no-dev \
     --no-interaction \
     --prefer-dist \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --ignore-platform-req=ext-gd
 
 # Copiar resto del proyecto
 COPY . .
