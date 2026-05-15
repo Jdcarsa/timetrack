@@ -1,0 +1,11 @@
+{
+    "providers": [
+        "php"
+    ],
+    "packages": {
+        "php": "8.4"
+    },
+    "extensions": [
+        "gd"
+    ]
+}
