@@ -1,5 +1,6 @@
 FROM php:8.3-cli-alpine
 
+# Dependencias del sistema
 RUN apk add --no-cache \
     git \
     unzip \
@@ -13,6 +14,7 @@ RUN apk add --no-cache \
     libwebp-dev \
     mysql-client
 
+# Extensiones PHP
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
@@ -26,30 +28,31 @@ RUN docker-php-ext-install \
     intl \
     bcmath
 
+# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# copiar archivos necesarios para composer
-COPY composer.json composer.lock artisan ./
+# 1. Copiar composer primero para cache
+COPY composer.json composer.lock ./
 
+# 2. Instalar deps SIN scripts (porque aún no existe todo Laravel)
 RUN composer install \
     --no-dev \
     --no-interaction \
     --prefer-dist \
     --optimize-autoloader \
-    --ignore-platform-req=ext-gd
+    --ignore-platform-req=ext-gd \
+    --no-scripts
 
-# copiar resto del proyecto
+# 3. Copiar TODO el proyecto
 COPY . .
 
-RUN mkdir -p database && touch database/database.sqlite
-
-RUN php artisan config:clear || true \
-    && php artisan cache:clear || true \
-    && php artisan route:clear || true \
-    && php artisan view:clear || true
+# 4. Ahora sí scripts Laravel
+RUN php artisan package:discover --ansi || true
+RUN php artisan config:clear || true
+RUN php artisan cache:clear || true
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "php artisan migrate --seed --force && php artisan serve --host=0.0.0.0 --port=8080"]
+CMD ["sh", "-c", "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8080"]
